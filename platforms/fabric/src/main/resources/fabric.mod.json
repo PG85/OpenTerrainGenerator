@@ -3,7 +3,7 @@
   "id": "otg",
   "version": "${version}",
 
-  "name": "Example Mod",
+  "name": "OpenTerrainGenerator",
   "description": "OTG: Generate anything!",
   "authors": [
     "Team OTG"
@@ -20,6 +20,9 @@
   "entrypoints": {
     "main": [
       "com.pg85.otg.fabric.OTGPlugin"
+    ],
+    "fabric-datagen": [
+      "com.pg85.otg.fabric.util.FabricDataGenerator"
     ]
   },
   "mixins": [
