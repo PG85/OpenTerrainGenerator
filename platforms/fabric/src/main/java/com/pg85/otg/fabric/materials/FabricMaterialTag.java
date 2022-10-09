@@ -5,23 +5,46 @@ import com.pg85.otg.util.materials.LocalMaterialTag;
 import net.minecraft.ResourceLocationException;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.BlockTags;
-import net.minecraft.tags.Tag;
+import net.minecraft.tags.TagKey;
 import net.minecraft.world.level.block.Block;
 
-public class FabricMaterialTag extends LocalMaterialTag {
+import java.lang.reflect.Field;
+import java.util.HashMap;
+import java.util.Map;
 
-    public static LocalMaterialTag ofString(String name) {
+public class FabricMaterialTag extends LocalMaterialTag {
+    private static Map<ResourceLocation, TagKey<Block>> VANILLA_TAGS = new HashMap<>();
+
+    static {
+        for (Field f : BlockTags.class.getDeclaredFields())
+        {
+            try
+            {
+                TagKey<Block> o = (TagKey<Block>) f.get(null);
+
+                VANILLA_TAGS.put(o.location(), o);
+
+            } catch (IllegalAccessException e)
+            {
+                throw new RuntimeException(e);
+            }
+        }
+    }
+
+
+    public static LocalMaterialTag ofString(String name)
+    {
         // If otg: or no domain was supplied, try OTG tags.
 
         // TODO: This might not be updated correctly, needs another look --auth
-        Tag<Block> optTag;
+        TagKey<Block> optTag;
         if(!name.contains(":") || name.startsWith(Constants.MOD_ID_SHORT + ":"))
         {
             final ResourceLocation otgResourceLocation;
             try
             {
                 otgResourceLocation = new ResourceLocation(Constants.MOD_ID_SHORT + ":" + name.trim().toLowerCase().replace(Constants.MOD_ID_SHORT + ":", ""));
-                optTag = BlockTags.getAllTags().getTag(otgResourceLocation);
+                optTag = VANILLA_TAGS.get(otgResourceLocation);
                 if(optTag != null)
                 {
                     return new FabricMaterialTag(optTag, otgResourceLocation.toString());
@@ -33,7 +56,7 @@ public class FabricMaterialTag extends LocalMaterialTag {
         try
         {
             resourceLocation = new ResourceLocation(name.trim().toLowerCase());
-            optTag = BlockTags.getAllTags().getTag(resourceLocation);
+            optTag = VANILLA_TAGS.get(resourceLocation);
             if(optTag != null)
             {
                 return new FabricMaterialTag(optTag, resourceLocation.toString());
@@ -44,21 +67,22 @@ public class FabricMaterialTag extends LocalMaterialTag {
     }
 
     private final String name;
-    private final Tag<Block> blockTag;
+    private final TagKey<Block> blockTag;
 
-    private FabricMaterialTag(Tag<Block> blockTag, String name)
+    private FabricMaterialTag(TagKey<Block> blockTag, String name)
     {
         this.blockTag = blockTag;
         this.name = name;
     }
 
-    public Tag<Block> getTag()
+    public TagKey<Block> getTag()
     {
         return this.blockTag;
     }
 
     @Override
-    public String toString() {
+    public String toString()
+    {
         return this.name;
     }
 }

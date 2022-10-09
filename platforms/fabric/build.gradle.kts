@@ -5,15 +5,16 @@ plugins {
 
 loom {
     silentMojangMappingsLicense()
+    accessWidener = file("src/main/resources/otg-fabric.accesswidener")
 }
 
 dependencies {
-    minecraft("com.mojang:minecraft:1.18")
+    minecraft("com.mojang:minecraft:1.18.2")
     mappings(loom.officialMojangMappings())
-    modImplementation("net.fabricmc:fabric-loader:0.12.8")
+    modImplementation("net.fabricmc:fabric-loader:0.13.3")
 
     // Fabric API. This is technically optional, but you probably want it anyway.
-    modImplementation("net.fabricmc.fabric-api:fabric-api:0.44.0+1.18")
+    modImplementation("net.fabricmc.fabric-api:fabric-api:0.48.0+1.18.2")
 
     implementation(project(":common:common-core"))
 }

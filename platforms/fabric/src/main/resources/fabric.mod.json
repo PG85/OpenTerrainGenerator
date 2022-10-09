@@ -29,6 +29,8 @@
     "otg-fabric.mixins.json"
   ],
 
+  "accessWidener": "otg-fabric.accesswidener",
+
   "depends": {
     "fabricloader": ">=0.12.8",
     "fabric": "*",

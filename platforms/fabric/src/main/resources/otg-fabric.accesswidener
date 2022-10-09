@@ -1,0 +1,5 @@
+accessWidener   v1      named
+accessible      class   net/minecraft/world/level/levelgen/WorldGenSettings
+
+accessible      field   net/minecraft/world/level/biome/BiomeGenerationSettings features Ljava/util/List;
+mutable      field   net/minecraft/world/level/biome/BiomeGenerationSettings features Ljava/util/List;

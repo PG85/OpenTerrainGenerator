@@ -21,10 +21,12 @@ import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
+import net.minecraft.core.Holder;
+import net.minecraft.core.HolderSet;
 import net.minecraft.core.Registry;
 import net.minecraft.core.WritableRegistry;
 import net.minecraft.data.BuiltinRegistries;
-import net.minecraft.resources.RegistryLookupCodec;
+import net.minecraft.resources.RegistryFixedCodec;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.ExtraCodecs;
@@ -118,7 +120,7 @@ public class OTGBiomeProvider extends BiomeSource implements ILayerSource {
         }
     }
 
-    private static Stream<Supplier<Biome>> getAllBiomesByPreset(String presetFolderName, WritableRegistry<Biome> registry)
+    private static Stream<Holder<Biome>> getAllBiomesByPreset(String presetFolderName, WritableRegistry<Biome> registry)
     {
         if(OTG.getEngine().getPluginConfig().getDeveloperModeEnabled())
         {
@@ -145,7 +147,7 @@ public class OTGBiomeProvider extends BiomeSource implements ILayerSource {
         return fixBiomeFeatureOrder(biomesForPreset, registry);
     }
 
-    private static Stream<Supplier<Biome>> fixBiomeFeatureOrder(List<ResourceKey<Biome>> biomesForPreset, WritableRegistry<Biome> registry)
+    private static Stream<Holder<Biome>> fixBiomeFeatureOrder(List<ResourceKey<Biome>> biomesForPreset, WritableRegistry<Biome> registry)
     {
         // For some reason Mojang thought it'd be funny to add a method (BiomeSource.buildFeaturesPerStep)
         // that validates the order of features registered to biomes, making sure that all biomes have
@@ -165,11 +167,11 @@ public class OTGBiomeProvider extends BiomeSource implements ILayerSource {
             biome.getGenerationSettings().features().stream().forEach(listForDecorationStep -> {
                 for(int i = listForDecorationStep.size() - 1; i >= 0; i--)
                 {
-                    PlacedFeature feature2 = listForDecorationStep.get(i).get();
+                    PlacedFeature feature2 = listForDecorationStep.get(i).value();
                     List<PlacedFeature> dependenciesForFeature = dependenciesPerFeature.computeIfAbsent(feature2, g -> { return new ArrayList<PlacedFeature>(); });
                     if(i > 0)
                     {
-                        PlacedFeature feature3 = listForDecorationStep.get(i - 1).get();
+                        PlacedFeature feature3 = listForDecorationStep.get(i - 1).value();
                         if(feature3 != feature2 && !dependenciesForFeature.contains(feature3))
                         {
                             dependenciesForFeature.add(feature3);
@@ -215,7 +217,7 @@ public class OTGBiomeProvider extends BiomeSource implements ILayerSource {
             biome.getGenerationSettings().features().stream().forEach(listForDecorationStep -> {
                 for(int i = listForDecorationStep.size() - 1; i >= 0; i--)
                 {
-                    PlacedFeature feature2 = listForDecorationStep.get(i).get();
+                    PlacedFeature feature2 = listForDecorationStep.get(i).value();
                     // Ignore any features that already have an order determined by non-otg biomes, 
                     // or have already been found in other otg biomes
                     if(!featureOrder.contains(feature2))
@@ -228,37 +230,36 @@ public class OTGBiomeProvider extends BiomeSource implements ILayerSource {
 
         // For OTG biomes, reorder PlacedFeatures so MC doesn't blow up.
         biomes.stream().filter(a -> BuiltinRegistries.BIOME.getKey(a).getNamespace().equals(com.pg85.otg.constants.Constants.MOD_ID_SHORT)).forEach(biome -> {
-            List<List<Supplier<PlacedFeature>>> orderedFeatures = new ArrayList<>();
+            //do the below for all OTG biomes
+
+            List<HolderSet<PlacedFeature>> orderedFeatures = new ArrayList<>();
             biome.getGenerationSettings().features().stream().forEach(listForDecorationStep -> {
-                List<Supplier<PlacedFeature>> orderedFeaturesForDecorationStep = new ArrayList<>();
+                //do the below for all HolderSets in the features list of that biome.
+
+                //add (into a new holder set) all the Holders in the order that featureOrder is in.
+                //List<Holder> is basically a HolderSet we can add stuff to
+                List<Holder<PlacedFeature>> newHolderSetList = new ArrayList<Holder<PlacedFeature>>();
                 featureOrder.forEach(orderedFeature -> {
                     listForDecorationStep.forEach(supplier ->
                     {
-                        if(orderedFeature == supplier.get())
+                        if(orderedFeature == supplier.value())
                         {
-                            orderedFeaturesForDecorationStep.add(supplier);
+                            newHolderSetList.add(supplier);
                         }
                     });
                 });
-                orderedFeatures.add(orderedFeaturesForDecorationStep);
+
+                //change the List<Holder> into a HolderSet so we can add it to the List<HolderSet>
+                HolderSet<PlacedFeature> newHolderSet = HolderSet.direct(newHolderSetList);
+                orderedFeatures.add(newHolderSet);
             });
 
-            //The following does this but with reflection cus the field is private:
-            //biome.getGenerationSettings().features = orderedFeatures.stream().map(ImmutableList::copyOf).collect(ImmutableList.toImmutableList());
-            try {
-                Class clazz = BiomeGenerationSettings.class;
-                Field f = clazz.getDeclaredField("features");
-                f.setAccessible(true);
-
-                f.set(biome.getGenerationSettings(),
-                        orderedFeatures.stream().map(ImmutableList::copyOf).collect(ImmutableList.toImmutableList())
-                        );
-            } catch (IllegalAccessException | NoSuchFieldException e) {
-                OTG.getEngine().getLogger().log(LogLevel.ERROR, LogCategory.BIOME_REGISTRY, "BiomeGenerationSettings.features reflection failed");
-            }
+            //Access widener (accessible and mutable) used
+            //redundant: biome.getGenerationSettings().features = orderedFeatures.stream().collect(Collectors.toList());
+            biome.getGenerationSettings().features = orderedFeatures;
         });
 
-        return biomes.stream().map((biome) -> () -> biome);
+        return biomes.stream().map(biome -> Holder.direct(biome));
     }
 
     protected Codec<? extends BiomeSource> codec()
@@ -285,9 +286,9 @@ public class OTGBiomeProvider extends BiomeSource implements ILayerSource {
     // TODO: This is only used by MC internally, OTG fetches all biomes via CachedBiomeProvider.
     // Could make this use the cache too?
     @Override
-    public Biome getNoiseBiome(int biomeX, int biomeY, int biomeZ, Climate.Sampler p_186738_)
+    public Holder<Biome> getNoiseBiome(int biomeX, int biomeY, int biomeZ, Climate.Sampler p_186738_)
     {
-        return this.registry.get(this.keyLookup.get(this.layer.get().sample(biomeX, biomeZ)));
+        return Holder.direct(this.registry.get(this.keyLookup.get(this.layer.get().sample(biomeX, biomeZ))));
     }
 
     @Override
@@ -355,7 +356,7 @@ public class OTGBiomeProvider extends BiomeSource implements ILayerSource {
                                 return DataResult.success(preset.name);
                             }
                     ).fieldOf("preset").stable().forGetter(OTGBiomeProvider.PresetInstance::preset),
-                    RegistryLookupCodec.create(Registry.BIOME_REGISTRY).forGetter(OTGBiomeProvider.PresetInstance::biomes)).apply(
+                    RegistryFixedCodec.create(Registry.BIOME_REGISTRY).forGetter(OTGBiomeProvider.PresetInstance::biomes)).apply(
                     instance,
                     instance.stable(OTGBiomeProvider.PresetInstance::new)
             );
