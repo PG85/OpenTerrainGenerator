@@ -1,6 +1,5 @@
 package com.pg85.otg.forge.world;
 
-import java.io.File;
 import com.pg85.otg.OTG;
 import com.pg85.otg.common.LocalWorld;
 import com.pg85.otg.configuration.dimensions.DimensionConfig;
@@ -18,13 +17,15 @@ import com.pg85.otg.forge.gui.GuiHandler;
 import com.pg85.otg.generator.biome.BiomeGenerator;
 import com.pg85.otg.logging.LogMarker;
 import com.pg85.otg.util.helpers.ReflectionHelper;
-
 import net.minecraft.world.World;
 import net.minecraft.world.WorldSettings;
 import net.minecraft.world.WorldType;
 import net.minecraft.world.biome.BiomeProvider;
 import net.minecraftforge.fml.relauncher.Side;
 import net.minecraftforge.fml.relauncher.SideOnly;
+
+import java.io.File;
+import static com.pg85.otg.configuration.standard.PluginStandardValues.GENERATOR_PRESET;
 
 public class OTGWorldType extends WorldType
 {
@@ -45,6 +46,7 @@ public class OTGWorldType extends WorldType
     {   	
         // Ignore client worlds, no need to know about OTG biomes and biome id's on the client.
     	// TODO: What about fog colors?
+
         if (mcWorld.isRemote)
         {
             return super.getBiomeProvider(mcWorld);
@@ -148,19 +150,27 @@ public class OTGWorldType extends WorldType
     	// For MP server
         if(!mcWorld.getMinecraftServer().isSinglePlayer())
         {
-	        WorldSettings worldSettings = new WorldSettings(mcWorld.getWorldInfo().getSeed(), mcWorld.getWorldInfo().getGameType(), mcWorld.getWorldInfo().isMapFeaturesEnabled(), mcWorld.getWorldInfo().isHardcoreModeEnabled(), OTGPlugin.OtgWorldType);
-	        worldSettings.setGeneratorOptions(PluginStandardValues.PLUGIN_NAME);
-	        mcWorld.getWorldInfo().setAllowCommands(mcWorld.getWorldInfo().areCommandsAllowed());
-	        mcWorld.getWorldInfo().populateFromWorldSettings(worldSettings);
+
+			if(mcWorld.getWorldInfo().getGeneratorOptions().length() > 0)
+			{
+				GENERATOR_PRESET = mcWorld.getWorldInfo().getGeneratorOptions();
+				OTG.log(LogMarker.INFO, "Server Properties Generator-Settings detected, initialize preset: " + mcWorld.getWorldInfo().getGeneratorOptions());
+			}
+
+			WorldSettings worldSettings = new WorldSettings(mcWorld.getWorldInfo().getSeed(), mcWorld.getWorldInfo().getGameType(), mcWorld.getWorldInfo().isMapFeaturesEnabled(), mcWorld.getWorldInfo().isHardcoreModeEnabled(), OTGPlugin.OtgWorldType);
+			worldSettings.setGeneratorOptions(PluginStandardValues.PLUGIN_NAME);
+			mcWorld.getWorldInfo().setAllowCommands(mcWorld.getWorldInfo().areCommandsAllowed());
+			mcWorld.getWorldInfo().populateFromWorldSettings(worldSettings);
+
     	}
         //
 
-        ForgeWorld world = ((ForgeEngine)OTG.getEngine()).getWorldLoader().getOrCreateForgeWorld(mcWorld);        
-        Class<? extends BiomeGenerator> biomeGenClass = world.getConfigs().getWorldConfig().biomeMode;
-        BiomeGenerator biomeGenerator = OTG.getBiomeModeManager().createCached(biomeGenClass, world);
-        BiomeProvider biomeProvider = this.createBiomeProvider(world, biomeGenerator);
-        world.setBiomeGenerator(biomeGenerator);
-        return biomeProvider;
+		ForgeWorld world = ((ForgeEngine)OTG.getEngine()).getWorldLoader().getOrCreateForgeWorld(mcWorld);
+		Class<? extends BiomeGenerator> biomeGenClass = world.getConfigs().getWorldConfig().biomeMode;
+		BiomeGenerator biomeGenerator = OTG.getBiomeModeManager().createCached(biomeGenClass, world);
+		BiomeProvider biomeProvider = this.createBiomeProvider(world, biomeGenerator);
+		world.setBiomeGenerator(biomeGenerator);
+		return biomeProvider;
     }
 
     /**

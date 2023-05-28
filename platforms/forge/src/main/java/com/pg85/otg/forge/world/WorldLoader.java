@@ -5,8 +5,8 @@ import com.pg85.otg.common.LocalBiome;
 import com.pg85.otg.common.LocalWorld;
 import com.pg85.otg.configuration.biome.BiomeConfig;
 import com.pg85.otg.configuration.biome.BiomeConfigFinder;
-import com.pg85.otg.configuration.biome.BiomeLoadInstruction;
 import com.pg85.otg.configuration.biome.BiomeConfigFinder.BiomeConfigStub;
+import com.pg85.otg.configuration.biome.BiomeLoadInstruction;
 import com.pg85.otg.configuration.io.FileSettingsWriter;
 import com.pg85.otg.configuration.io.SettingsMap;
 import com.pg85.otg.configuration.standard.PluginStandardValues;
@@ -24,7 +24,6 @@ import com.pg85.otg.logging.LogMarker;
 import com.pg85.otg.network.ServerConfigProvider;
 import com.pg85.otg.util.helpers.FileHelper;
 import com.pg85.otg.util.minecraft.defaults.DefaultBiome;
-
 import net.minecraft.client.multiplayer.WorldClient;
 import net.minecraft.util.ResourceLocation;
 import net.minecraft.world.DimensionType;
@@ -32,34 +31,30 @@ import net.minecraft.world.World;
 import net.minecraft.world.WorldServer;
 import net.minecraft.world.biome.Biome;
 import net.minecraftforge.common.BiomeDictionary;
-import net.minecraftforge.common.DimensionManager;
 import net.minecraftforge.common.BiomeDictionary.Type;
+import net.minecraftforge.common.DimensionManager;
 import net.minecraftforge.fml.common.Loader;
 import net.minecraftforge.fml.common.registry.ForgeRegistries;
 import net.minecraftforge.fml.relauncher.Side;
 import net.minecraftforge.fml.relauncher.SideOnly;
 
+import javax.annotation.Nullable;
 import java.io.DataInputStream;
 import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Field;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.Map.Entry;
-import java.util.Set;
 
-import javax.annotation.Nullable;
+import static com.pg85.otg.configuration.standard.PluginStandardValues.GENERATOR_PRESET;
+
 
 /**
  * Responsible for loading and unloading the world.
  *
  */
 public final class WorldLoader
-{	
+{
 	private final File configsDir;
     private final HashMap<String, ForgeWorld> worlds = new HashMap<String, ForgeWorld>();
     private final HashMap<String, ForgeWorld> unloadedWorlds = new HashMap<String, ForgeWorld>();
@@ -337,20 +332,27 @@ public final class WorldLoader
 
     @Nullable ForgeWorld getOrCreateForgeWorld(World mcWorld)
     {
-    	if(!mcWorld.getWorldInfo().getGeneratorOptions().equals(PluginStandardValues.PLUGIN_NAME))
-    	{
-    		throw new RuntimeException("Error: OTG tried to load a world that is missing OTG information. Was this world created via OTG? For Forge Single Player, be sure to use the OTG world creation screen.");
-    	}
+		if(!mcWorld.getWorldInfo().getGeneratorOptions().equals(PluginStandardValues.PLUGIN_NAME))
+		{
+			throw new RuntimeException("Error: OTG tried to load a world that is missing OTG information. Was this world created via OTG? For Forge Single Player, be sure to use the OTG world creation screen.");
+		}
 
+		String generatorOptions = GENERATOR_PRESET;
     	String worldName = WorldHelper.getName(mcWorld);
     	File worldConfigsFolder = null;
 
-    	worldConfigsFolder = this.getWorldDir(OTG.getDimensionsConfig().getDimensionConfig(worldName).PresetName);
-        if (worldConfigsFolder == null || !worldConfigsFolder.exists())
-        {
-            // OpenTerrainGenerator is not enabled for this world
-            return null;
-        }
+		if (!generatorOptions.trim().isEmpty()) {
+			// we have an actual string for preset name
+			worldConfigsFolder = this.getWorldDir(generatorOptions.trim());
+		} else {
+			worldConfigsFolder = this.getWorldDir(OTG.getDimensionsConfig().getDimensionConfig(worldName).PresetName);
+		}
+
+		if (worldConfigsFolder == null || !worldConfigsFolder.exists())
+		{
+			// OpenTerrainGenerator is not enabled for this world
+			return null;
+		}
 
         ForgeWorld world = this.getWorld(worldName);
         if (world == null)
