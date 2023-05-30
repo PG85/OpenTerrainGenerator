@@ -246,7 +246,11 @@ public class SaplingListener
                 && biomeConfig.replaceToBiomeName != null
                 && biomeConfig.replaceToBiomeName.trim().length() > 0)
         {
-           return world.getBiomeByNameOrNull(biomeConfig.replaceToBiomeName).getBiomeConfig();
+            LocalBiome localBiome = (world.getBiomeByNameOrNull(biomeConfig.replaceToBiomeName));
+            if (localBiome != null)
+            {
+               return localBiome.getBiomeConfig();
+            }
         }
         return null;
     }
