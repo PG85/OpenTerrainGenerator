@@ -66,7 +66,7 @@ public class BiomeCommand extends BaseCommand
         {
             try
             {
-                String savedBiomeName = world.getSavedBiomeName(x, y);
+                String savedBiomeName = world.getSavedBiomeName(x, z);
                 sender.sendMessage(new TextComponentString(""));
                 sender.sendMessage(
                         new TextComponentTranslation(MESSAGE_COLOR + "According to the world save files, you are in the " + VALUE_COLOR + savedBiomeName + MESSAGE_COLOR + " biome, with id " + VALUE_COLOR + biome.getIds().getSavedId()));

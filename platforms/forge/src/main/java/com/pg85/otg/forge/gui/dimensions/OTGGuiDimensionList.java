@@ -46,6 +46,8 @@ import com.pg85.otg.forge.world.ForgeWorld;
 import com.pg85.otg.forge.world.ForgeWorldSession;
 import com.pg85.otg.logging.LogMarker;
 
+import static com.pg85.otg.forge.biomes.ForgeBiomeRegistryManager.JEID;
+
 public class OTGGuiDimensionList extends GuiScreen implements GuiYesNoCallback
 {
 	static
@@ -485,12 +487,11 @@ public class OTGGuiDimensionList extends GuiScreen implements GuiYesNoCallback
 	                	{
 	                		this.mc.displayGuiScreen(new GuiErrorScreen("Error", "Multiple dimensions are using the same portal color, each dimension's portal color must be unique."));
 	                	}
-	                	else if(!OTG.getEngine().areEnoughBiomeIdsAvailableForPresets(presetNames))
-    					{
-	                		this.mc.displayGuiScreen(new GuiErrorScreen("Error", "Not enough biome id's available to add all dimensions."));
-    					} else {
-    						this.mc.displayGuiScreen(new OTGGuiEnterWorldName(this, this.dimensions.get(0).PresetName));    						
-    					}
+						if (!JEID && !OTG.getEngine().areEnoughBiomeIdsAvailableForPresets(presetNames)) {
+							this.mc.displayGuiScreen(new GuiErrorScreen("Error", "Not enough biome id's available to add all dimensions."));
+						} else {
+							this.mc.displayGuiScreen(new OTGGuiEnterWorldName(this, this.dimensions.get(0).PresetName));
+						}
                 	} else {
                 		        
                         if(this.mc.isSingleplayer())
@@ -520,20 +521,18 @@ public class OTGGuiDimensionList extends GuiScreen implements GuiYesNoCallback
 	                				if(dimConfig.isNewConfig)
 	                				{
 	        		                	ArrayList<String> presetNames = new ArrayList<String>();
-	        		                	presetNames.add(dimConfig.PresetName);               					
-	                					if(OTG.getEngine().areEnoughBiomeIdsAvailableForPresets(presetNames))
-	                					{
-		                					dimConfig.isNewConfig = false;
-		                			        OTG.IsNewWorldBeingCreated = true;
-		                			        if(!OTGDimensionManager.createNewDimensionSP(dimConfig, this.mc.getIntegratedServer()))
-		                			        {
-		                			        	this.mc.displayGuiScreen(new GuiErrorScreen("Error", "Dimension id " + dimConfig.DimensionId + " was taken."));
-		                			        }
-		                        			OTG.IsNewWorldBeingCreated = false;
-	                					} else {
-	                						this.mc.displayGuiScreen(new GuiErrorScreen("Error", "Not enough biome id's available to add all dimensions."));
-	                						break;
-	                					}
+	        		                	presetNames.add(dimConfig.PresetName);
+										if (JEID || OTG.getEngine().areEnoughBiomeIdsAvailableForPresets(presetNames)) {
+											dimConfig.isNewConfig = false;
+											OTG.IsNewWorldBeingCreated = true;
+											if (!OTGDimensionManager.createNewDimensionSP(dimConfig, this.mc.getIntegratedServer())) {
+												this.mc.displayGuiScreen(new GuiErrorScreen("Error", "Dimension id " + dimConfig.DimensionId + " was taken."));
+											}
+											OTG.IsNewWorldBeingCreated = false;
+										} else {
+											this.mc.displayGuiScreen(new GuiErrorScreen("Error", "Not enough biome id's available to add all dimensions."));
+											break;
+										}
 	                				}
 	                			}
 		                	}

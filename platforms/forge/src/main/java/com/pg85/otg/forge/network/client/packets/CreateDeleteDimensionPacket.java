@@ -29,6 +29,8 @@ import com.pg85.otg.util.helpers.StreamHelper;
 
 import io.netty.buffer.ByteBuf;
 
+import static com.pg85.otg.forge.biomes.ForgeBiomeRegistryManager.JEID;
+
 /**
  * Sent from the client to the server when players use the ingame UI to create/delete dimensions
  */
@@ -108,16 +110,15 @@ public class CreateDeleteDimensionPacket extends OTGPacket
 			    	        // Ensure the portal color is unique (not already in use), otherwise correct it.
 	        				PortalColors.correctPortalColor(dimConfig, OTG.getDimensionsConfig().getAllDimensions());
 
-		                	ArrayList<String> presetNames = new ArrayList<String>();
-		                	presetNames.add(dimConfig.PresetName);
-        					if(!OTG.getEngine().areEnoughBiomeIdsAvailableForPresets(presetNames))
-        					{
-        						// Update the UI on the client
-        						ServerPacketManager.sendDimensionSynchPacketToAllPlayers(player.getServer());
-        						OTG.log(LogMarker.INFO, "Warning: Client tried to create a dimension, but not enough biome id's are available.");
-        						return;
-        					}
-		                								
+								ArrayList<String> presetNames = new ArrayList<String>();
+								presetNames.add(dimConfig.PresetName);
+								if (!JEID && !OTG.getEngine().areEnoughBiomeIdsAvailableForPresets(presetNames)) {
+									// Update the UI on the client
+									ServerPacketManager.sendDimensionSynchPacketToAllPlayers(player.getServer());
+									OTG.log(LogMarker.INFO, "Warning: Client tried to create a dimension, but not enough biome id's are available.");
+									return;
+								}
+
             				long seed = (new Random()).nextLong();		            				
             	            String sSeed = dimConfig.Seed;
             	            if (sSeed != null && !StringUtils.isEmpty(sSeed))

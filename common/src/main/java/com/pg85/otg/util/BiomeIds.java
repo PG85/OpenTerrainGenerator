@@ -1,5 +1,9 @@
 package com.pg85.otg.util;
 
+import com.pg85.otg.configuration.biome.BiomeConfig;
+
+import java.util.Random;
+
 /**
  * Immutable class to hold the biome ids of a biome.
  * <p>
@@ -12,6 +16,7 @@ public class BiomeIds
 {
     private int otgBiomeId;
     private int savedId;
+    private boolean isVirtual;
 
     /**
      * Creates a new virtual biome id.
@@ -20,10 +25,11 @@ public class BiomeIds
      * @param savedId The id used in the world save files (the .mca files in
      *            the region directory).
      */
-    public BiomeIds(int otgBiomeId, int savedId)
+    public BiomeIds(int otgBiomeId, int savedId, boolean isVirtual)
     {
         this.otgBiomeId = otgBiomeId;
         this.savedId = savedId;
+        this.isVirtual = isVirtual;
     }
 
     /**
@@ -35,7 +41,7 @@ public class BiomeIds
      */
     public boolean isVirtual()
     {
-    	return otgBiomeId > 255;
+    	return this.isVirtual;
     }
 
     /**

@@ -29,10 +29,12 @@ import net.minecraft.util.ResourceLocation;
 import net.minecraft.world.biome.Biome;
 import net.minecraftforge.common.BiomeDictionary;
 import net.minecraftforge.common.BiomeDictionary.Type;
+import net.minecraftforge.fml.common.Loader;
 import net.minecraftforge.fml.common.registry.ForgeRegistries;
 
 public class ForgeBiomeRegistryManager
 {
+	public static final boolean JEID = Loader.isModLoaded("jeid");
     private BiMap<Integer, Biome> ids = null;
     private BiMap<ResourceLocation, Biome> names = null;
 	
@@ -104,14 +106,14 @@ public class ForgeBiomeRegistryManager
 	    	// This can happen when an unloaded world is loaded, its biomes have already been registered
 	    	biome = alreadyRegisteredBiome;
 	    } else {
-	
+
 	        // No existing biome, create new one
 	        OTGBiome customBiome = new OTGBiome(biomeConfig, registryKey);
 	
 	        ForgeEngine forgeEngine = ((ForgeEngine) OTG.getEngine());
-	
-	        if (biomeIds.isVirtual())
-	        //if(biomeConfig.replaceToBiomeName != null && biomeConfig.replaceToBiomeName.length() > 0) // This biome uses ReplaceToBiomeName and should use the ReplaceToBiomeName biome's id.
+
+	        //if (biomeIds.isVirtual())
+			if(biomeIds.getOTGBiomeId() > -1 && biomeConfig.replaceToBiomeName != null && biomeConfig.replaceToBiomeName.length() > 0) // This biome uses ReplaceToBiomeName and should use the ReplaceToBiomeName biome's id.
 	        {
 	        	// Only register by resourcelocation.
 	        	// TODO: Make sure this is enough for Forge 1.12+ <- It looks like the server may not send the biomes to the client if they are not added to the registry. TODO: Check if only virtual biomes have this problem.
@@ -144,12 +146,13 @@ public class ForgeBiomeRegistryManager
 		// only for biome -> id queries, any (saved)id -> biome query will return the ReplaceToBiomeName biome.
 	
 	    Biome existingBiome = Biome.getBiome(biomeIds.getSavedId());
-	
-	    if (biomeIds.getSavedId() >= 256 || biomeIds.getSavedId() < 0)
-	    {
-	        throw new RuntimeException("Could not allocate the requested id " + biomeIds.getSavedId() + " for biome " + biomeConfig.getName() + ". All available id's under 256 have been allocated\n" + ". To proceed, adjust your WorldConfig or use the ReplaceToBiomeName feature to make the biome virtual.");
-	    }
-	
+
+
+
+		if (!JEID && (biomeIds.getSavedId() < 0 || biomeIds.getSavedId() >= 256)) {
+			 throw new RuntimeException("Could not allocate the requested id " + biomeIds.getSavedId() + " for biome " + biomeConfig.getName() + ". All available id's under 256 have been allocated\n" + ". To proceed, adjust your WorldConfig or use the ReplaceToBiomeName feature to make the biome virtual.");
+		 }
+
 	    ForgeBiome forgeBiome = new ForgeBiome(biome, biomeConfig, biomeIds);
 	
 	    ForgeBiomeRegistryManager.registerBiomeInBiomeDictionary(biome, existingBiome, biomeConfig, configProvider);
@@ -595,17 +598,20 @@ public class ForgeBiomeRegistryManager
         return standardBiomes;
 	}
 
-	public int getAvailableBiomeIdsCount()
-	{
-		BitSet biomeRegistryAvailabiltyMap = getBiomeRegistryAvailabiltyMap();
-		int availableIds = 0;
-    	for(int i = 0; i < ForgeWorld.MAX_SAVED_BIOMES_COUNT; i++)
-    	{
-     		if(i >= biomeRegistryAvailabiltyMap.size() || !biomeRegistryAvailabiltyMap.get(i))
-    		{
-    			availableIds++;
-    		}
-    	}
-    	return availableIds;
+	public int getAvailableBiomeIdsCount() {
+		if (JEID) {
+			return Integer.MAX_VALUE;
+		} else {
+			BitSet biomeRegistryAvailabiltyMap = getBiomeRegistryAvailabiltyMap();
+			int availableIds = 0;
+
+			for (int i = 0; i < ForgeWorld.MAX_SAVED_BIOMES_COUNT; i++) {
+				if (i >= biomeRegistryAvailabiltyMap.size() || !biomeRegistryAvailabiltyMap.get(i)) {
+					availableIds++;
+				}
+			}
+
+			return availableIds;
+		}
 	}
 }

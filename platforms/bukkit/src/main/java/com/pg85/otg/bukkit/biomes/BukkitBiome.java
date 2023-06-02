@@ -23,7 +23,7 @@ public class BukkitBiome implements LocalBiome
     {
         this.biomeBase = biome;
         int savedBiomeId =  BiomeBase.a(biomeBase);
-        this.biomeIds = new BiomeIds(WorldHelper.getOTGBiomeId(biomeBase), savedBiomeId);
+        this.biomeIds = new BiomeIds(WorldHelper.getOTGBiomeId(biomeBase), savedBiomeId,biomeConfig.replaceToBiomeName != null && !biomeConfig.replaceToBiomeName.isEmpty());
         this.biomeConfig = biomeConfig;
         this.isCustom = biome instanceof OTGBiomeBase;
     }

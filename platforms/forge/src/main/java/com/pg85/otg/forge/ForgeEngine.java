@@ -35,6 +35,8 @@ import net.minecraftforge.event.ForgeEventFactory;
 import net.minecraftforge.fml.common.FMLCommonHandler;
 import net.minecraftforge.fml.common.Loader;
 
+import static com.pg85.otg.forge.biomes.ForgeBiomeRegistryManager.JEID;
+
 public class ForgeEngine extends OTGEngine
 {
 	private ForgeBiomeRegistryManager biomeRegistryManager;
@@ -199,7 +201,10 @@ public class ForgeEngine extends OTGEngine
 	@Override
 	public boolean areEnoughBiomeIdsAvailableForPresets(ArrayList<String> presetNames)
 	{
-		if(presetNames == null)
+        if(JEID) {
+            return true;
+        }
+        if(presetNames == null)
 		{
 			return true;
 		}
