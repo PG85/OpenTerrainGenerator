@@ -249,7 +249,11 @@ public class OTGChunkGenerator implements ISurfaceGeneratorNoiseProvider {
             cacheX = x1 + largestRadius;
             for (int z1 = -smoothRadius; z1 <= smoothRadius; ++z1) {
                 cacheZ = z1 + largestRadius;
-                biome = biomes[cacheX * areaSize + cacheZ];
+                int biomeIndex = cacheX * areaSize + cacheZ;
+                if (biomeIndex >= biomes.length || (biome = biomes[biomeIndex]) == null) {
+                    // Provider can come up short at region edges; skip instead of crashing
+                    continue;
+                }
                 biomeTerrainSettings = biome.getTerrainSettings();
                 heightAt = biomeTerrainSettings.getBiomeHeight();
                 // TODO: vanilla reduces the weight by half when the depth here is greater than the center depth, but OTG doesn't do that?
@@ -277,7 +281,10 @@ public class OTGChunkGenerator implements ISurfaceGeneratorNoiseProvider {
             cacheX = x1 + largestRadius;
             for (int z1 = -chcSmoothRadius; z1 <= chcSmoothRadius; ++z1) {
                 cacheZ = z1 + largestRadius;
-                biome = biomes[cacheX * areaSize + cacheZ];
+                int chcBiomeIndex = cacheX * areaSize + cacheZ;
+                if (chcBiomeIndex >= biomes.length || (biome = biomes[chcBiomeIndex]) == null) {
+                    continue;
+                }
 
                 heightAt = biome.getTerrainSettings().getBiomeHeight();
                 weightAt = BIOME_WEIGHT_TABLE[x1 + 32 + (z1 + 32) * 65] / (heightAt + 2.0F);

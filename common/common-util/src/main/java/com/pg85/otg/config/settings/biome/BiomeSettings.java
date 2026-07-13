@@ -73,7 +73,13 @@ public abstract class BiomeSettings implements ConfigFile {
 
     // Height / volatility
     public double getCHCData(int controlLayer) {
-        return this.getTerrainSettings().getCustomHeightControl().get(controlLayer);
+        var chc = this.getTerrainSettings().getCustomHeightControl();
+        if (controlLayer < 0 || controlLayer >= chc.size()) {
+            // Legacy presets carry CHC arrays sized for 256-high worlds; extended
+            // height worlds index past them. Treat missing layers as no control.
+            return 0.0;
+        }
+        return chc.get(controlLayer);
     }
 
     // OTG Custom structures (BO's)
