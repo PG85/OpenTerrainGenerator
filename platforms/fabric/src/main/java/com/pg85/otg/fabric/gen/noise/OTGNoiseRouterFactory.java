@@ -39,7 +39,9 @@ import net.minecraft.world.level.levelgen.synth.NormalNoise;
  *   cave threshold depth; caves are carved out of solid terrain only.
  * - No slideOverworld: OTG's pipeline already fades the top of the world, and vanilla's slide
  *   anchors are hardcoded to -64..320, which mis-anchors on configurable world heights.
- * - Aquifers and ore veins disabled; fluid placement comes from {@link OTGFluidPicker}.
+ * - Ore veins disabled. Aquifers run with vanilla noises on top of {@link OTGFluidPicker}
+ *   as the global picker: open terrain floods to the per-biome water level, while caves
+ *   below it stay dry apart from vanilla-style aquifer pockets.
  * - Climate/biome slots are zero; OTG does its own biome placement.
  */
 public final class OTGNoiseRouterFactory {
@@ -73,11 +75,15 @@ public final class OTGNoiseRouterFactory {
         DensityFunction depthProxy = new OTGDepthProxyFunction(internalGenerator, depthGradient);
         DensityFunction finalDensity = finalDensity(otgTerrain, depthProxy, functions, noises);
 
+        // Vanilla aquifer noises (NoiseRouterData.overworld, 1.20.1). With aquifers enabled,
+        // the aquifer keeps caves below the water level dry apart from local pockets;
+        // OTGFluidPicker stays the global picker, so per-biome water levels still apply
+        // to open terrain (oceans, lakes).
         NoiseRouter router = new NoiseRouter(
-                DensityFunctions.zero(), // barrierNoise
-                DensityFunctions.zero(), // fluidLevelFloodednessNoise
-                DensityFunctions.zero(), // fluidLevelSpreadNoise
-                DensityFunctions.zero(), // lavaNoise
+                DensityFunctions.noise(noises.getOrThrow(Noises.AQUIFER_BARRIER), 0.5), // barrierNoise
+                DensityFunctions.noise(noises.getOrThrow(Noises.AQUIFER_FLUID_LEVEL_FLOODEDNESS), 0.67), // fluidLevelFloodednessNoise
+                DensityFunctions.noise(noises.getOrThrow(Noises.AQUIFER_FLUID_LEVEL_SPREAD), 0.7142857142857143), // fluidLevelSpreadNoise
+                DensityFunctions.noise(noises.getOrThrow(Noises.AQUIFER_LAVA)), // lavaNoise
                 DensityFunctions.zero(), // temperature
                 DensityFunctions.zero(), // vegetation
                 DensityFunctions.zero(), // continents
@@ -100,7 +106,7 @@ public final class OTGNoiseRouterFactory {
                 registeredSettings.spawnTarget(),
                 registeredSettings.seaLevel(),
                 registeredSettings.disableMobGeneration(),
-                false, // aquifersEnabled: NoiseChunk uses Aquifer.createDisabled(fluidPicker)
+                true,  // aquifersEnabled: without them every cave below the water level floods
                 false, // oreVeinsEnabled: vein router slots are zero
                 registeredSettings.useLegacyRandomSource()
         );

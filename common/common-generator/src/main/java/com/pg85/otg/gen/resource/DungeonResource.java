@@ -19,9 +19,12 @@ public class DungeonResource extends FrequencyResourceBase
         super(biomeConfig, args);
         assureSize(3, args);
 
+        // Legacy presets use Dungeon(Frequency,Rarity,MinAltitude,MaxAltitude);
+        // the current format drops Frequency (always 1). Accept both.
+        int offset = args.size() >= 4 ? 1 : 0;
         this.frequency = 1;
-        this.rarity = readRarity(args.get(0));
-        Pair<Integer, Integer> elevations = readElevations(args.get(1), args.get(2));
+        this.rarity = readRarity(args.get(offset));
+        Pair<Integer, Integer> elevations = readElevations(args.get(offset + 1), args.get(offset + 2));
 
         this.minAltitude = elevations.getFirst();
         this.maxAltitude = elevations.getSecond();
