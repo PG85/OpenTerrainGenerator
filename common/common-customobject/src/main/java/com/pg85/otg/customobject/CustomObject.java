@@ -4,6 +4,7 @@ import com.pg85.otg.customobject.structures.CustomStructureCache;
 import com.pg85.otg.interfaces.ICustomObject;
 import com.pg85.otg.interfaces.IWorldGenRegion;
 import com.pg85.otg.util.bo3.Rotation;
+import com.pg85.otg.util.materials.MaterialSet;
 
 import java.nio.file.Path;
 import java.util.Random;
@@ -60,6 +61,7 @@ public interface CustomObject extends SpawnableObject, ICustomObject {
 	 * @param world
 	 * @param x
 	 * @param z
+	 * @param sourceBlocks Blocks the tree may spawn on, or null for the default rules.
 	 * @return Whether the attempt was successful.
 	 */
     boolean spawnAsTree(
@@ -69,7 +71,8 @@ public interface CustomObject extends SpawnableObject, ICustomObject {
 			int x,
 			int z,
 			int minY,
-			int maxY
+			int maxY,
+			MaterialSet sourceBlocks
     );
 
     /**

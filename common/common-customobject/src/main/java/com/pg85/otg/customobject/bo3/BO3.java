@@ -26,6 +26,7 @@ import com.pg85.otg.customobject.util.BO3Enums.OutsideSourceBlock;
 import com.pg85.otg.customobject.util.BO3Enums.SpawnHeightEnum;
 import com.pg85.otg.exceptions.InvalidConfigException;
 import com.pg85.otg.interfaces.IWorldGenRegion;
+import com.pg85.otg.util.materials.MaterialSet;
 import com.pg85.otg.util.ChunkCoordinate;
 import com.pg85.otg.util.biome.ReplaceBlockMatrix;
 import com.pg85.otg.util.bo3.Rotation;
@@ -288,7 +289,7 @@ public class BO3 implements StructuredCustomObject
 	// Used for trees during decoration
 	@Override
 	public boolean spawnAsTree(CustomStructureCache structureCache, IWorldGenRegion world,
-							   Random random, int x, int z, int minY, int maxY)
+							   Random random, int x, int z, int minY, int maxY, MaterialSet sourceBlocks)
 	{
 		// A bit ugly, but avoids having to create and implement another spawnAsTree method.
 		if(minY == -1)

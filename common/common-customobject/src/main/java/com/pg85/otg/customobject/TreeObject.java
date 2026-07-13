@@ -4,6 +4,9 @@ import com.pg85.otg.constants.Constants;
 import com.pg85.otg.customobject.structures.CustomStructureCache;
 import com.pg85.otg.interfaces.IWorldGenRegion;
 import com.pg85.otg.util.bo3.Rotation;
+import com.pg85.otg.util.materials.LocalMaterialData;
+import com.pg85.otg.util.materials.LocalMaterials;
+import com.pg85.otg.util.materials.MaterialSet;
 import com.pg85.otg.util.minecraft.TreeType;
 
 import java.nio.file.Path;
@@ -59,6 +62,9 @@ class TreeObject implements CustomObject {
         if (y < world.getWorldInfo().minY() || y > world.getWorldInfo().maxY()) {
             return false;
         }
+        if (!canSpawnAt(world, x, y, z, null)) {
+            return false;
+        }
         return spawnForced(
                 structureCache,
                 world,
@@ -69,6 +75,30 @@ class TreeObject implements CustomObject {
                 z,
                 false
         );
+    }
+
+    /**
+     * getHighestBlockAboveYAt also returns the first position above liquids,
+     * so without this check trees spawn on top of oceans, lakes and ice.
+     * When sourceBlocks is given, the block below must be in the set;
+     * otherwise anything solid except liquids and ice is accepted.
+     */
+    private boolean canSpawnAt(IWorldGenRegion world, int x, int y, int z, MaterialSet sourceBlocks) {
+        LocalMaterialData blockAtY = world.getMaterial(x, y, z);
+        if (blockAtY == null || !blockAtY.isAir()) {
+            return false;
+        }
+        LocalMaterialData blockBelow = world.getMaterial(x, y - 1, z);
+        if (blockBelow == null) {
+            return false;
+        }
+        if (sourceBlocks != null) {
+            return sourceBlocks.contains(blockBelow);
+        }
+        return !blockBelow.isLiquid()
+                && !blockBelow.isMaterial(LocalMaterials.ICE)
+                && !blockBelow.isMaterial(LocalMaterials.PACKED_ICE)
+                && !blockBelow.isMaterial(LocalMaterials.BLUE_ICE);
     }
 
     @Override
@@ -105,7 +135,8 @@ class TreeObject implements CustomObject {
             int x,
             int z,
             int minY,
-            int maxY
+            int maxY,
+            MaterialSet sourceBlocks
     ) {
         int y = world.getHighestBlockAboveYAt(x, z);
         Rotation rotation = Rotation.getRandomRotation(random);
@@ -117,6 +148,10 @@ class TreeObject implements CustomObject {
         }
 
         if (y < world.getWorldInfo().minY() || y > world.getWorldInfo().maxY()) {
+            return false;
+        }
+
+        if (!canSpawnAt(world, x, y, z, sourceBlocks)) {
             return false;
         }
 
