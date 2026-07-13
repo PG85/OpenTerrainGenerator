@@ -13,7 +13,8 @@
     "WorldPresetTagsMixin",
     "CocoaDecoratorMixin",
     "StructureManagerAccessor",
-    "LanguageMixin"
+    "LanguageMixin",
+    "LevelGameRulesMixin"
   ],
   "client": [
   ],

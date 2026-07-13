@@ -4,6 +4,8 @@ import com.pg85.otg.OTG;
 import com.pg85.otg.shared.commands.OTGCommand;
 import com.pg85.otg.fabric.events.WorldSaveCallback;
 import com.pg85.otg.shared.gen.SharedOTGChunkGenerator;
+import com.pg85.otg.shared.gamerules.GameRuleApplier;
+import com.pg85.otg.shared.gamerules.GameRuleManager;
 import com.pg85.otg.shared.materials.SharedMaterialReader;
 import com.pg85.otg.shared.util.SharedLogger;
 import com.pg85.otg.util.OTGLog;
@@ -12,6 +14,7 @@ import com.pg85.otg.util.logging.LogCategory;
 import com.pg85.otg.util.logging.LogLevel;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.minecraft.world.level.chunk.ChunkGenerator;
 
 @SuppressWarnings("unused")
@@ -28,12 +31,18 @@ public class OTGPlugin implements ModInitializer {
 
 		registerWorldSave();
 		registerCommands();
+		registerServerEvents();
 
 		OTG.log("OTG Engine started, presets loaded");
 	}
 
 	void registerCommands() {
 		CommandRegistrationCallback.EVENT.register(OTGCommand::register);
+	}
+
+	void registerServerEvents() {
+		ServerLifecycleEvents.SERVER_STARTED.register(GameRuleApplier::applyToOverworldIfConfigured);
+		ServerLifecycleEvents.SERVER_STOPPED.register(server -> GameRuleManager.clear());
 	}
 
 	void registerWorldSave() {

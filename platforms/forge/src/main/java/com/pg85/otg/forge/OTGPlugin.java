@@ -5,6 +5,8 @@ import com.pg85.otg.OTG;
 import com.pg85.otg.constants.Constants;
 import com.pg85.otg.shared.biome.SharedOTGBiomeProvider;
 import com.pg85.otg.shared.commands.OTGCommand;
+import com.pg85.otg.shared.gamerules.GameRuleApplier;
+import com.pg85.otg.shared.gamerules.GameRuleManager;
 import com.pg85.otg.shared.gen.SharedOTGChunkGenerator;
 import com.pg85.otg.shared.materials.SharedMaterialReader;
 import com.pg85.otg.shared.util.SharedLogger;
@@ -19,6 +21,8 @@ import net.minecraft.world.level.chunk.ChunkGenerator;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.RegisterCommandsEvent;
 import net.minecraftforge.event.level.LevelEvent;
+import net.minecraftforge.event.server.ServerStartedEvent;
+import net.minecraftforge.event.server.ServerStoppedEvent;
 import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
@@ -50,12 +54,22 @@ public class OTGPlugin {
 
         MinecraftForge.EVENT_BUS.addListener(this::onRegisterCommands);
         MinecraftForge.EVENT_BUS.addListener(this::onLevelSave);
+        MinecraftForge.EVENT_BUS.addListener(this::onServerStarted);
+        MinecraftForge.EVENT_BUS.addListener(this::onServerStopped);
 
         OTG.log("OTG Engine started, presets loaded");
     }
 
     private void onRegisterCommands(RegisterCommandsEvent event) {
         OTGCommand.register(event.getDispatcher(), event.getBuildContext(), event.getCommandSelection());
+    }
+
+    private void onServerStarted(ServerStartedEvent event) {
+        GameRuleApplier.applyToOverworldIfConfigured(event.getServer());
+    }
+
+    private void onServerStopped(ServerStoppedEvent event) {
+        GameRuleManager.clear();
     }
 
     private void onLevelSave(LevelEvent.Save event) {

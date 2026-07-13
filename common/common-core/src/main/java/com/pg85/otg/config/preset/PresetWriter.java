@@ -651,5 +651,19 @@ public class PresetWriter {
         writer.putSetting(GameRuleSettings.DO_TRADER_SPAWNING, gameRuleSettings.isDoTraderSpawning());
         writer.putSetting(GameRuleSettings.FORGIVE_DEAD_PLAYERS, gameRuleSettings.isForgiveDeadPlayers());
         writer.putSetting(GameRuleSettings.UNIVERSAL_ANGER, gameRuleSettings.isUniversalAnger());
+        writer.putSetting(GameRuleSettings.DO_IMMEDIATE_RESPAWN, gameRuleSettings.isDoImmediateRespawn());
+        writer.putSetting(GameRuleSettings.REDUCED_DEBUG_INFO, gameRuleSettings.isReducedDebugInfo());
+        writer.putSetting(GameRuleSettings.FREEZE_DAMAGE, gameRuleSettings.isFreezeDamage());
+        writer.putSetting(GameRuleSettings.PLAYERS_SLEEPING_PERCENTAGE, gameRuleSettings.getPlayersSleepingPercentage());
+        writer.putSetting(GameRuleSettings.DO_WARDEN_SPAWNING, gameRuleSettings.isDoWardenSpawning());
+        writer.putSetting(GameRuleSettings.BLOCK_EXPLOSION_DROP_DECAY, gameRuleSettings.isBlockExplosionDropDecay());
+        writer.putSetting(GameRuleSettings.MOB_EXPLOSION_DROP_DECAY, gameRuleSettings.isMobExplosionDropDecay());
+        writer.putSetting(GameRuleSettings.TNT_EXPLOSION_DROP_DECAY, gameRuleSettings.isTntExplosionDropDecay());
+        writer.putSetting(GameRuleSettings.SNOW_ACCUMULATION_HEIGHT, gameRuleSettings.getSnowAccumulationHeight());
+        writer.putSetting(GameRuleSettings.COMMAND_MODIFICATION_BLOCK_LIMIT, gameRuleSettings.getCommandModificationBlockLimit());
+        writer.putSetting(GameRuleSettings.DO_VINES_SPREAD, gameRuleSettings.isDoVinesSpread());
+        writer.putSetting(GameRuleSettings.GLOBAL_SOUND_EVENTS, gameRuleSettings.isGlobalSoundEvents());
+        writer.putSetting(GameRuleSettings.LAVA_SOURCE_CONVERSION, gameRuleSettings.isLavaSourceConversion());
+        writer.putSetting(GameRuleSettings.WATER_SOURCE_CONVERSION, gameRuleSettings.isWaterSourceConversion());
     }
 }

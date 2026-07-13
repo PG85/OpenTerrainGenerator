@@ -42,6 +42,21 @@ public class GameRuleSettings extends ConfigSection {
     private final boolean doTraderSpawning;
     private final boolean forgiveDeadPlayers;
     private final boolean universalAnger;
+    // New 1.21.1 rules
+    private final boolean reducedDebugInfo;
+    private final boolean doImmediateRespawn;
+    private final boolean freezeDamage;
+    private final boolean doWardenSpawning;
+    private final boolean blockExplosionDropDecay;
+    private final boolean mobExplosionDropDecay;
+    private final boolean tntExplosionDropDecay;
+    private final boolean waterSourceConversion;
+    private final boolean lavaSourceConversion;
+    private final boolean globalSoundEvents;
+    private final boolean doVinesSpread;
+    private final int commandModificationBlockLimit;
+    private final int playersSleepingPercentage;
+    private final int snowAccumulationHeight;
 
     public static final Setting<Boolean> OVERRIDE_GAME_RULES = Settings.booleanSetting(
             "OverrideGameRules", false,
@@ -61,7 +76,7 @@ public class GameRuleSettings extends ConfigSection {
     );
     public static final Setting<Boolean> DO_MOB_SPAWNING = Settings.booleanSetting(
             "DoMobSpawning", true,
-            t -> ((GameRuleSettings) t).isMobGriefing()
+            t -> ((GameRuleSettings) t).isDoMobSpawning()
     );
     public static final Setting<Boolean> DO_MOB_LOOT = Settings.booleanSetting(
             "DoMobLoot", true,
@@ -171,6 +186,63 @@ public class GameRuleSettings extends ConfigSection {
             "MaxCommandChainLength", 65536, 0, Integer.MAX_VALUE,
             t -> ((GameRuleSettings) t).getMaxCommandChainLength()
     );
+    // New 1.21.1 rules
+    public static final Setting<Boolean> REDUCED_DEBUG_INFO = Settings.booleanSetting(
+            "ReducedDebugInfo", false,
+            t -> ((GameRuleSettings) t).isReducedDebugInfo()
+    );
+    public static final Setting<Boolean> DO_IMMEDIATE_RESPAWN = Settings.booleanSetting(
+            "DoImmediateRespawn", false,
+            t -> ((GameRuleSettings) t).isDoImmediateRespawn()
+    );
+    public static final Setting<Boolean> FREEZE_DAMAGE = Settings.booleanSetting(
+            "FreezeDamage", true,
+            t -> ((GameRuleSettings) t).isFreezeDamage()
+    );
+    public static final Setting<Boolean> DO_WARDEN_SPAWNING = Settings.booleanSetting(
+            "DoWardenSpawning", true,
+            t -> ((GameRuleSettings) t).isDoWardenSpawning()
+    );
+    public static final Setting<Boolean> BLOCK_EXPLOSION_DROP_DECAY = Settings.booleanSetting(
+            "BlockExplosionDropDecay", true,
+            t -> ((GameRuleSettings) t).isBlockExplosionDropDecay()
+    );
+    public static final Setting<Boolean> MOB_EXPLOSION_DROP_DECAY = Settings.booleanSetting(
+            "MobExplosionDropDecay", true,
+            t -> ((GameRuleSettings) t).isMobExplosionDropDecay()
+    );
+    public static final Setting<Boolean> TNT_EXPLOSION_DROP_DECAY = Settings.booleanSetting(
+            "TntExplosionDropDecay", false,
+            t -> ((GameRuleSettings) t).isTntExplosionDropDecay()
+    );
+    public static final Setting<Boolean> WATER_SOURCE_CONVERSION = Settings.booleanSetting(
+            "WaterSourceConversion", true,
+            t -> ((GameRuleSettings) t).isWaterSourceConversion()
+    );
+    public static final Setting<Boolean> LAVA_SOURCE_CONVERSION = Settings.booleanSetting(
+            "LavaSourceConversion", false,
+            t -> ((GameRuleSettings) t).isLavaSourceConversion()
+    );
+    public static final Setting<Boolean> GLOBAL_SOUND_EVENTS = Settings.booleanSetting(
+            "GlobalSoundEvents", true,
+            t -> ((GameRuleSettings) t).isGlobalSoundEvents()
+    );
+    public static final Setting<Boolean> DO_VINES_SPREAD = Settings.booleanSetting(
+            "DoVinesSpread", true,
+            t -> ((GameRuleSettings) t).isDoVinesSpread()
+    );
+    public static final Setting<Integer> COMMAND_MODIFICATION_BLOCK_LIMIT = Settings.intSetting(
+            "CommandModificationBlockLimit", 32768, 0, Integer.MAX_VALUE,
+            t -> ((GameRuleSettings) t).getCommandModificationBlockLimit()
+    );
+    public static final Setting<Integer> PLAYERS_SLEEPING_PERCENTAGE = Settings.intSetting(
+            "PlayersSleepingPercentage", 100, 0, 100,
+            t -> ((GameRuleSettings) t).getPlayersSleepingPercentage()
+    );
+    public static final Setting<Integer> SNOW_ACCUMULATION_HEIGHT = Settings.intSetting(
+            "SnowAccumulationHeight", 1, 0, Integer.MAX_VALUE,
+            t -> ((GameRuleSettings) t).getSnowAccumulationHeight()
+    );
 
     public static GameRuleSettings getGameRuleSettings(SettingsMap reader) {
         var gameRuleSettingsBuilder = builder();
@@ -207,6 +279,20 @@ public class GameRuleSettings extends ConfigSection {
         gameRuleSettingsBuilder.doTraderSpawning(reader.getSetting(DO_TRADER_SPAWNING));
         gameRuleSettingsBuilder.forgiveDeadPlayers(reader.getSetting(FORGIVE_DEAD_PLAYERS));
         gameRuleSettingsBuilder.universalAnger(reader.getSetting(UNIVERSAL_ANGER));
+        gameRuleSettingsBuilder.reducedDebugInfo(reader.getSetting(REDUCED_DEBUG_INFO));
+        gameRuleSettingsBuilder.doImmediateRespawn(reader.getSetting(DO_IMMEDIATE_RESPAWN));
+        gameRuleSettingsBuilder.freezeDamage(reader.getSetting(FREEZE_DAMAGE));
+        gameRuleSettingsBuilder.doWardenSpawning(reader.getSetting(DO_WARDEN_SPAWNING));
+        gameRuleSettingsBuilder.blockExplosionDropDecay(reader.getSetting(BLOCK_EXPLOSION_DROP_DECAY));
+        gameRuleSettingsBuilder.mobExplosionDropDecay(reader.getSetting(MOB_EXPLOSION_DROP_DECAY));
+        gameRuleSettingsBuilder.tntExplosionDropDecay(reader.getSetting(TNT_EXPLOSION_DROP_DECAY));
+        gameRuleSettingsBuilder.waterSourceConversion(reader.getSetting(WATER_SOURCE_CONVERSION));
+        gameRuleSettingsBuilder.lavaSourceConversion(reader.getSetting(LAVA_SOURCE_CONVERSION));
+        gameRuleSettingsBuilder.globalSoundEvents(reader.getSetting(GLOBAL_SOUND_EVENTS));
+        gameRuleSettingsBuilder.doVinesSpread(reader.getSetting(DO_VINES_SPREAD));
+        gameRuleSettingsBuilder.commandModificationBlockLimit(reader.getSetting(COMMAND_MODIFICATION_BLOCK_LIMIT));
+        gameRuleSettingsBuilder.playersSleepingPercentage(reader.getSetting(PLAYERS_SLEEPING_PERCENTAGE));
+        gameRuleSettingsBuilder.snowAccumulationHeight(reader.getSetting(SNOW_ACCUMULATION_HEIGHT));
         return gameRuleSettingsBuilder.build();
     }
 
