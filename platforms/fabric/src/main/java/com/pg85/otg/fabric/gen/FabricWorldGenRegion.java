@@ -20,7 +20,6 @@ import com.pg85.otg.util.materials.LocalMaterialData;
 import com.pg85.otg.util.materials.LocalMaterials;
 import com.pg85.otg.util.minecraft.TreeType;
 import com.pg85.otg.util.nbt.NamedBinaryTag;
-import net.minecraft.ReportedException;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.data.worldgen.features.CaveFeatures;
@@ -28,7 +27,7 @@ import net.minecraft.data.worldgen.features.EndFeatures;
 import net.minecraft.data.worldgen.features.TreeFeatures;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.IntTag;
-import net.minecraft.nbt.NbtIo;
+import net.minecraft.nbt.TagParser;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.*;
 import net.minecraft.world.entity.monster.Guardian;
@@ -46,9 +45,6 @@ import net.minecraft.world.level.levelgen.feature.ConfiguredFeature;
 import net.minecraft.world.level.levelgen.feature.Feature;
 import net.minecraft.world.level.levelgen.feature.configurations.FeatureConfiguration;
 
-import java.io.ByteArrayInputStream;
-import java.io.DataInputStream;
-import java.io.IOException;
 import java.text.MessageFormat;
 import java.util.Optional;
 import java.util.Random;
@@ -513,26 +509,17 @@ public class FabricWorldGenRegion extends LocalWorldGenRegion {
             nbtTagCompound = new CompoundTag();
             if (entityData.getNameTagOrNBTFileName().toLowerCase().trim().endsWith(".txt")) {
                 try {
-                    var inputStream =
-                        new DataInputStream(new ByteArrayInputStream(entityData.getMetaData().getBytes()));
-                    nbtTagCompound = NbtIo.read(inputStream);
-                } catch (IOException | ReportedException e) {
-                    if (OTGLog.getLogger().getLogCategoryEnabled(LogCategory.CUSTOM_OBJECTS)) {
-                        OTGLog.log(
-                            LogLevel.ERROR,
-                            LogCategory.CUSTOM_OBJECTS,
-                            "Could not parse nbt for Entity() "
-                            + entityData.makeString()
-                            + ", file: "
-                            + entityData.getNameTagOrNBTFileName()
-                        );
-                    }
-                    throw new RuntimeException(
-                        "Could not parse nbt for Entity() "
-                        + entityData.makeString()
-                        + ", file: "
-                        + entityData.getNameTagOrNBTFileName(), e
+                    // .txt files contain text NBT (SNBT), not the binary format
+                    nbtTagCompound = TagParser.parseTag(entityData.getMetaData());
+                } catch (Exception e) {
+                    // A broken preset file shouldn't kill chunk generation — skip the entity
+                    OTGLog.getLogger().error(LogCategory.CUSTOM_OBJECTS,
+                        "Could not parse nbt for Entity() %s, file: %s, error: %s",
+                        entityData.makeString(),
+                        entityData.getNameTagOrNBTFileName(),
+                        e.getMessage()
                     );
+                    return;
                 }
                 // Specify which type of entity to spawn
                 nbtTagCompound.putString("id", entityData.getResourceLocation());
