@@ -23,6 +23,7 @@ import com.pg85.otg.exceptions.InvalidConfigException;
 import com.pg85.otg.config.settings.biome.BiomeSettings;
 import com.pg85.otg.interfaces.IMaterialReader;
 import com.pg85.otg.interfaces.IWorldGenRegion;
+import com.pg85.otg.util.materials.MaterialSet;
 import com.pg85.otg.util.ChunkCoordinate;
 import com.pg85.otg.util.OTGLog;
 import com.pg85.otg.util.OTGMaterialReader;
@@ -149,8 +150,9 @@ public class BO4 implements StructuredCustomObject, BOPackSerializable
 	
 	@Override
 	public boolean spawnAsTree(CustomStructureCache structureCache, IWorldGenRegion world,
-							   Random random, int x, int z, int minY, int maxY)
+							   Random random, int x, int z, int minY, int maxY, MaterialSet sourceBlocks)
 	{
+		// BO4s cannot spawn as trees
 		return false;
 	}
 

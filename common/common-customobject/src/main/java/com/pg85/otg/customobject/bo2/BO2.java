@@ -359,8 +359,9 @@ public class BO2 extends CustomObjectConfigFile implements CustomObject
 
 	@Override
 	public boolean spawnAsTree(CustomStructureCache structureCache, IWorldGenRegion world,
-							   Random random, int x, int z, int minY, int maxY)
+							   Random random, int x, int z, int minY, int maxY, MaterialSet sourceBlocks)
 	{
+		// BO2s define their own source blocks in their config; the passed sourceBlocks is for TreeObject
 		return spawn(world, random, x, z, minY == -1 ? this.spawnElevationMin : minY, maxY == -1 ? this.spawnElevationMax : maxY);
 	} 
 	
