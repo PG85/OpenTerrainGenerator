@@ -6,6 +6,7 @@ import com.pg85.otg.OTG;
 import com.pg85.otg.config.settings.preset.*;
 import com.pg85.otg.constants.Constants;
 import com.pg85.otg.shared.biome.SharedLegacyBiomeLoader;
+import com.pg85.otg.shared.i18n.OTGTranslations;
 import com.pg85.otg.shared.biome.SharedOTGBiomeProvider;
 import com.pg85.otg.shared.gen.SharedOTGChunkGenerator;
 import com.pg85.otg.shared.materials.SharedMaterialData;
@@ -279,6 +280,8 @@ public class RegistryLoaderMixin {
         ResourceLocation id = new ResourceLocation(Constants.MOD_ID_SHORT, preset.getPresetRegistryName().toLowerCase(Locale.ROOT));
         ResourceKey<WorldPreset> key = ResourceKey.create(Registries.WORLD_PRESET, id);
         worldPresets.register(key, worldPreset, Lifecycle.stable());
+        // Presets are user content, so their display names can't ship in a static lang file
+        OTGTranslations.put(id.toLanguageKey("generator"), preset.getPresetConfig().getPresetInfo().getDisplayName());
         OTGLog.getLogger().info("Registered world preset: " + key.location());
     }
 

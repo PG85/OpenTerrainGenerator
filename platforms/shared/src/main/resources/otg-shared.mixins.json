@@ -11,7 +11,8 @@
     "WorldGenRegionAccessor",
     "WorldPresetTagsMixin",
     "CocoaDecoratorMixin",
-    "StructureManagerAccessor"
+    "StructureManagerAccessor",
+    "LanguageMixin"
   ],
   "client": [
   ],
