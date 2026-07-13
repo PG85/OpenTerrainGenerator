@@ -1,11 +1,11 @@
 package com.pg85.otg.fabric;
 
 import com.pg85.otg.OTG;
-import com.pg85.otg.fabric.commands.OTGCommand;
+import com.pg85.otg.shared.commands.OTGCommand;
 import com.pg85.otg.fabric.events.WorldSaveCallback;
-import com.pg85.otg.fabric.gen.OTGFabricChunkGenerator;
-import com.pg85.otg.fabric.materials.FabricMaterialReader;
-import com.pg85.otg.fabric.util.FabricLogger;
+import com.pg85.otg.shared.gen.SharedOTGChunkGenerator;
+import com.pg85.otg.shared.materials.SharedMaterialReader;
+import com.pg85.otg.shared.util.SharedLogger;
 import com.pg85.otg.util.OTGLog;
 import com.pg85.otg.util.OTGMaterialReader;
 import com.pg85.otg.util.logging.LogCategory;
@@ -21,9 +21,9 @@ public class OTGPlugin implements ModInitializer {
 		// This code runs as soon as Minecraft is in a mod-load-ready state.
 		// However, some things (like resources) may still be uninitialized.
 		// Proceed with mild caution.
-		OTGLog.setLogger(new FabricLogger());
+		OTGLog.setLogger(new SharedLogger());
 		OTGLog.getLogger().log(LogLevel.INFO, LogCategory.MAIN, "OTG Engine starting");
-		OTGMaterialReader.set(new FabricMaterialReader());
+		OTGMaterialReader.set(new SharedMaterialReader());
 		OTG.startEngine(new FabricEngine());
 
 		registerWorldSave();
@@ -39,7 +39,7 @@ public class OTGPlugin implements ModInitializer {
 	void registerWorldSave() {
 		WorldSaveCallback.EVENT.register((serverLevel) -> {
 			ChunkGenerator chunkGenerator = serverLevel.getChunkSource().getGenerator();
-			if (chunkGenerator instanceof OTGFabricChunkGenerator fabricChunkGenerator) {
+			if (chunkGenerator instanceof SharedOTGChunkGenerator fabricChunkGenerator) {
 				OTGLog.info(LogCategory.STRUCTURE_PLOTTING, "Saving structure cache for world " + fabricChunkGenerator.getPreset().getFolderName());
 				fabricChunkGenerator.saveStructureCache();
 			}

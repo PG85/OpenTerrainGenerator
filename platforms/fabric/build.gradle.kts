@@ -25,6 +25,7 @@ dependencies {
     mappings(loom.officialMojangMappings())
 
     otg(project(":common:common-core"))
+    otg(project(path = ":platforms:shared", configuration = "namedElements")) { isTransitive = false }
 
     compileOnly("org.projectlombok:lombok:1.18.32")
     annotationProcessor("org.projectlombok:lombok:1.18.32")
@@ -52,6 +53,9 @@ tasks {
     }
 
     shadowJar {
+        dependencyFilter.apply {
+            include(project(":platforms:shared"))
+        }
         exclude("architectury.common.json")
         configurations = listOf(otg)
         archiveClassifier.set("deobf-all")

@@ -24,7 +24,8 @@
     ]
   },
   "mixins": [
-    "otg-fabric.mixins.json"
+    "otg-fabric.mixins.json",
+    "otg-shared.mixins.json"
   ],
 
   "depends": {

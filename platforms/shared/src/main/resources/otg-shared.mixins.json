@@ -1,0 +1,21 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.pg85.otg.shared.mixin.",
+  "compatibilityLevel": "JAVA_16",
+  "mixins": [
+    "BiomeDataMixin",
+    "RegistryLoaderMixin",
+    "ChunkAccessAccessor",
+    "NoiseChunkAccessor",
+    "WorldGenRegionAccessor",
+    "WorldPresetTagsMixin",
+    "CocoaDecoratorMixin",
+    "StructureManagerAccessor"
+  ],
+  "client": [
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}
