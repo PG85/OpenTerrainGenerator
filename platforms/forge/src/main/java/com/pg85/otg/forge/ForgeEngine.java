@@ -2,78 +2,33 @@ package com.pg85.otg.forge;
 
 import com.pg85.otg.OTGEngine;
 import com.pg85.otg.constants.Constants;
-import com.pg85.otg.forge.gen.OTGNoiseChunkGenerator;
-import com.pg85.otg.forge.materials.ForgeMaterials;
-import com.pg85.otg.forge.presets.ForgePresetLoader;
-import com.pg85.otg.forge.util.ForgeLogger;
 import com.pg85.otg.forge.util.ForgeModLoadedChecker;
-import net.minecraft.util.registry.MutableRegistry;
-import net.minecraft.world.IWorld;
-import net.minecraft.world.biome.Biome;
-import net.minecraft.world.server.ServerChunkProvider;
+import com.pg85.otg.shared.biome.SharedLegacyBiomeLoader;
+import com.pg85.otg.shared.materials.SharedMaterials;
+import com.pg85.otg.util.OTGLog;
+import net.minecraftforge.fml.loading.FMLPaths;
 import net.minecraftforge.fml.ModList;
-import net.minecraftforge.fml.loading.FMLLoader;
+
 import java.io.File;
-import java.nio.file.Paths;
 
-public class ForgeEngine extends OTGEngine
-{
-	public ForgeEngine()
-	{
-		super(				
-			new ForgeLogger(), 
-			Paths.get(FMLLoader.getGamePath().toString(), File.separator + "config" + File.separator + Constants.MOD_ID),
-			new ForgeModLoadedChecker(),
-			new ForgePresetLoader(Paths.get(FMLLoader.getGamePath().toString(), File.separator + "config" + File.separator + Constants.MOD_ID))
-		);
-	}
-	
-	@Override
-	public void onStart()
-	{
-		ForgeMaterials.init();
-		super.onStart();
-	}
+public class ForgeEngine extends OTGEngine {
+    protected ForgeEngine() {
+        super(
+                OTGLog.getLogger(),
+                FMLPaths.CONFIGDIR.get().resolve(Constants.MOD_ID),
+                new ForgeModLoadedChecker(),
+                new SharedLegacyBiomeLoader(FMLPaths.CONFIGDIR.get().resolve(Constants.MOD_ID))
+        );
+    }
 
-	public void reloadPreset(String presetFolderName, MutableRegistry<Biome> biomeRegistry)
-	{
-		((ForgePresetLoader)this.presetLoader).reloadPresetFromDisk(presetFolderName, this.biomeResourcesManager, this.logger, biomeRegistry);
-	}
-	
-	public void onSave(IWorld world)
-	{
-		// For server worlds, save the structure cache.
-		if(
-			!world.isClientSide() && 
-			world.getChunkSource() instanceof ServerChunkProvider && 
-			((ServerChunkProvider)world.getChunkSource()).generator instanceof OTGNoiseChunkGenerator
-		)
-		{
-			((OTGNoiseChunkGenerator)((ServerChunkProvider)world.getChunkSource()).generator).saveStructureCache();
-		}
-	}
+    @Override
+    public void onStart() {
+        SharedMaterials.init();
+        super.onStart();
+    }
 
-	public void onUnload(IWorld world)
-	{
-		// For server worlds, stop any worker threads.
-		if(
-			!world.isClientSide() && 
-			world.getChunkSource() instanceof ServerChunkProvider && 
-			((ServerChunkProvider)world.getChunkSource()).generator instanceof OTGNoiseChunkGenerator
-		)
-		{
-			((OTGNoiseChunkGenerator)((ServerChunkProvider)world.getChunkSource()).generator).stopWorkerThreads();
-		}
-	}
-	
-	@Override
-	public File getJarFile()
-	{
-		File modFile = ModList.get().getModFileById(Constants.MOD_ID_SHORT).getFile().getFilePath().toFile();
-		if(!modFile.isFile())
-		{
-			return null;
-		}
-		return modFile;
-	}
+    @Override
+    public File getJarFile() {
+        return ModList.get().getModFileById(Constants.MOD_ID_SHORT).getFile().getFilePath().toFile();
+    }
 }
