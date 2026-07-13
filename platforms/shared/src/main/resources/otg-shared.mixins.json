@@ -3,6 +3,7 @@
   "minVersion": "0.8",
   "package": "com.pg85.otg.shared.mixin.",
   "compatibilityLevel": "JAVA_16",
+  "refmap": "shared-platforms_shared-refmap.json",
   "mixins": [
     "BiomeDataMixin",
     "RegistryLoaderMixin",
