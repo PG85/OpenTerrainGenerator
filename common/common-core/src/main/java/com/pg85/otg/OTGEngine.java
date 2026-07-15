@@ -130,150 +130,84 @@ public abstract class OTGEngine
 
 	private void unpackDefaultPresetAndExamples(File presetsDir)
 	{
-		JarFile jarFile = openModJar();
-		if (jarFile == null)
-		{
-			this.logger.warn(LogCategory.MAIN, "Skipping default preset and example dimension configs unpack (copy them manually from the resources folder for development).");
-			return;
-		}
-
+		JarFile jarFile = null;
 		try
 		{
-			if (shouldSkipDefaultPresetUnpack(presetsDir, jarFile))
+			File jarFileLocation = getJarFile();
+			if(jarFileLocation == null || !jarFileLocation.exists())
 			{
-				this.logger.info(LogCategory.MAIN, "Default preset is up-to-date, skipping unpack.");
-				return;
-			}
-			unpackJarEntries(jarFile);
-		}
-		finally
-		{
-			try
-			{
-				jarFile.close();
-			}
-			catch (IOException e)
-			{
-				this.logger.printStackTrace(LogLevel.ERROR, LogCategory.MAIN, e);
-			}
-		}
-	}
-
-	/**
-	 * Opens the jar file that's running OTG.
-	 * @return the jar, or null if it couldn't be found or opened
-	 */
-	private JarFile openModJar()
-	{
-		File jarFileLocation = getJarFile();
-		if (jarFileLocation == null || !jarFileLocation.exists())
-		{
-			this.logger.warn(LogCategory.MAIN, "Could not find root jar file, location: " + jarFileLocation);
-			return null;
-		}
-		try
-		{
-			return new JarFile(jarFileLocation);
-		}
-		catch (IOException e)
-		{
-			this.logger.warn(LogCategory.MAIN, "Could not open root jar file " + jarFileLocation + ": " + e.getMessage());
-			return null;
-		}
-	}
-
-	/**
-	 * Checks whether the default preset on disk is already the same version or
-	 * newer than the one bundled in the jar.
-	 */
-	private boolean shouldSkipDefaultPresetUnpack(File presetsDir, JarFile jarFile)
-	{
-		File presetDir = new File(presetsDir, Constants.DEFAULT_PRESET_NAME);
-		if (!presetDir.exists())
-		{
-			return false;
-		}
-
-		File presetConfigFile = new File(presetDir, Constants.PRESET_CONFIG_FILE);
-		if (!presetConfigFile.exists())
-		{
-			return false;
-		}
-
-		try (BufferedReader existingConfigReader = new BufferedReader(new FileReader(presetConfigFile)))
-		{
-			int existingMajorVer = parseMajorVersion(existingConfigReader);
-			int existingMinorVer = parseMinorVersion(existingConfigReader);
-
-			int bundledMajorVer = 0;
-			int bundledMinorVer = 0;
-
-			Enumeration<JarEntry> entries = jarFile.entries();
-			while (entries.hasMoreElements())
-			{
-				JarEntry jarEntry = entries.nextElement();
-				if (jarEntry.getName().contains(Constants.DEFAULT_PRESET_NAME + "/" + Constants.PRESET_CONFIG_FILE))
-				{
-					try (BufferedReader jarConfigReader = new BufferedReader(new InputStreamReader(jarFile.getInputStream(jarEntry))))
-					{
-						bundledMajorVer = parseMajorVersion(jarConfigReader);
-						bundledMinorVer = parseMinorVersion(jarConfigReader);
-					}
-					break;
+				this.logger.log(LogLevel.WARN, LogCategory.MAIN, "Could not find root jar file, skipping default preset and example dimension configs unpack (copy them manually from the resources folder for development).");
+			} else {
+				try {
+					jarFile = new JarFile(jarFileLocation);
+				} catch (IOException e) {
+					this.logger.log(LogLevel.WARN, LogCategory.MAIN, "Could not open root jar file, skipping default preset and example dimension configs unpack (copy them manually from the resources folder for development).");
+					return;
 				}
-			}
 
-			// Skip if the existing version is the same or newer
-			return (bundledMajorVer < existingMajorVer) ||
-				(bundledMajorVer == existingMajorVer && bundledMinorVer <= existingMinorVer);
-		}
-		catch (IOException e)
-		{
-			this.logger.printStackTrace(LogLevel.ERROR, LogCategory.MAIN, e);
-			return false;
-		}
-	}
-
-	/**
-	 * Extracts the default preset and the example dimension configs from the
-	 * jar into the OTG root directory. Existing files are overwritten.
-	 */
-	private void unpackJarEntries(JarFile jarFile)
-	{
-		try
-		{
-			String rootDir = getOTGRootFolder().toString();
-			String defaultPresetPath = "resources/" + Constants.PRESETS_FOLDER + "/" + Constants.DEFAULT_PRESET_NAME + "/";
-			String dimensionConfigsPath = "resources/" + Constants.DIMENSION_CONFIGS_FOLDER + "/";
-			Enumeration<JarEntry> entries = jarFile.entries();
-
-			while (entries.hasMoreElements())
-			{
-				JarEntry entry = entries.nextElement();
-				if (
-					entry.getName().startsWith(dimensionConfigsPath) ||
-					entry.getName().startsWith(defaultPresetPath)
-				)
+				Enumeration<JarEntry> entries = jarFile.entries();
+				// Unpack default preset if none present
+				if (new File(presetsDir.getPath() + File.separator + "Default").exists())
 				{
-					// Strip the leading "resources/"
-					File file = new File(rootDir + File.separator + (entry.getName().substring(10)));
-
-					if (entry.isDirectory())
+					File wc = new File(presetsDir.getPath() + File.separator+ "Default" + File.separator + Constants.PRESET_CONFIG_FILE);
+					if (wc.exists())
 					{
-						file.mkdirs();
-					} else {
-						file.createNewFile();
-						try (
-							java.io.InputStream is = jarFile.getInputStream(entry);
-							FileOutputStream fos = new FileOutputStream(file)
+						BufferedReader reader = new BufferedReader(new FileReader(wc));
+						int oldMajorVer = parseMajorVersion(reader);
+						int oldMinorVer = parseMinorVersion(reader);
+						int newMajorVer = 0;
+						int newMinorVer = 0;
+	
+						while (entries.hasMoreElements())
+						{
+							JarEntry jarEntry = entries.nextElement();
+							if (jarEntry.getName().contains("Default/" + Constants.PRESET_CONFIG_FILE))
+							{
+								reader = new BufferedReader(new BufferedReader(new InputStreamReader(jarFile.getInputStream(jarEntry))));
+								newMajorVer = parseMajorVersion(reader);
+								newMinorVer = parseMinorVersion(reader);
+							}
+						}
+						if(
+							(newMajorVer < oldMajorVer) ||
+							(newMajorVer == oldMajorVer && newMinorVer <= oldMinorVer)
 						)
 						{
+							return;
+						}
+					}
+				}
+	
+				String rootDir = getOTGRootFolder().toString();
+				String defaultPresetPath = "resources/Presets/Default/";
+				String dimensionConfigsPath = "resources/DimensionConfigs/";
+				entries = jarFile.entries();
+	
+				while (entries.hasMoreElements())
+				{
+					JarEntry entry = entries.nextElement();
+					if (
+						entry.getName().startsWith(dimensionConfigsPath) || 
+						entry.getName().startsWith(defaultPresetPath)
+					)
+					{
+						File file = new File(rootDir + File.separator + (entry.getName().substring(10)));
+	
+						if (entry.isDirectory())
+						{
+							file.mkdirs();
+						} else {
+							file.createNewFile();
+							FileOutputStream fos = new FileOutputStream(file);
 							byte[] byteArray = new byte[4096];
 							int i;
+							java.io.InputStream is = jarFile.getInputStream(entry);
 							while ((i = is.read(byteArray)) > 0)
 							{
 								fos.write(byteArray, 0, i);
 							}
+							is.close();
+							fos.close();
 						}
 					}
 				}
@@ -281,7 +215,16 @@ public abstract class OTGEngine
 		}
 		catch (IOException e)
 		{
-			this.logger.printStackTrace(LogLevel.ERROR, LogCategory.MAIN, e);
+			e.printStackTrace();
+		} finally {
+			if(jarFile != null)
+			{
+				try {
+					jarFile.close();
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+			}
 		}
 	}
 	
