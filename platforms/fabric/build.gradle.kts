@@ -1,3 +1,6 @@
+import java.nio.file.FileSystems
+import java.nio.file.Files
+
 plugins {
     id("platform-conventions")
     id("com.gradleup.shadow")
@@ -59,6 +62,25 @@ tasks {
         exclude("architectury.common.json")
         configurations = listOf(otg)
         archiveClassifier.set("deobf-all")
+
+        // Stamp a loader marker into the shared mixin config (and drop the stale
+        // refmap key — loom 1.17 statically remaps mixin bytecode and emits no
+        // refmaps). The marker makes the fabric and forge copies differ so the
+        // Forgix merge splits them into otg-shared.mixins_<loader>.json and
+        // rewires fabric.mod.json / the forge manifest — identical copies would
+        // be deduplicated into one config that cannot serve both loaders' renamed
+        // mixin classes. GSON ignores unknown keys, so the marker is inert.
+        doLast {
+            FileSystems.newFileSystem(archiveFile.get().asFile.toPath()).use { fs ->
+                val path = fs.getPath("otg-shared.mixins.json")
+                if (Files.exists(path)) {
+                    val json = Files.readString(path)
+                        .replaceFirst("\"refmap\": \"shared-platforms_shared-refmap.json\",\n", "")
+                        .replaceFirst("{", "{\n  \"_forgix_loader\": \"fabric\",")
+                    Files.writeString(path, json)
+                }
+            }
+        }
     }
 
     remapJar {

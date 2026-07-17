@@ -1,3 +1,6 @@
+import java.nio.file.FileSystems
+import java.nio.file.Files
+
 plugins {
     id("platform-conventions")
     id("com.gradleup.shadow")
@@ -97,6 +100,20 @@ tasks {
         exclude("architectury.common.json")
         configurations = listOf(otg)
         archiveClassifier.set("deobf-all")
+
+        // Loader marker + stale refmap removal — see the fabric shadowJar note:
+        // the copies must differ so the Forgix merge splits the config per loader.
+        doLast {
+            FileSystems.newFileSystem(archiveFile.get().asFile.toPath()).use { fs ->
+                val path = fs.getPath("otg-shared.mixins.json")
+                if (Files.exists(path)) {
+                    val json = Files.readString(path)
+                        .replaceFirst("\"refmap\": \"shared-platforms_shared-refmap.json\",\n", "")
+                        .replaceFirst("{", "{\n  \"_forgix_loader\": \"forge\",")
+                    Files.writeString(path, json)
+                }
+            }
+        }
     }
 
     remapJar {

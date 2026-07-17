@@ -38,6 +38,11 @@ import org.spongepowered.asm.mixin.injection.callback.LocalCapture;
 
 import java.util.*;
 
+// No enum switches in this class: javac compiles them to a synthetic $SwitchMap inner
+// class, which the Forgix merge suffix-renames to RegistryLoaderMixin$1_<loader>. That
+// breaks Mixin's Outer$Inner companion-class detection, so the reference is never
+// conformed and world creation crashes with IllegalClassLoadError. Same goes for
+// anonymous/local classes — keep this mixin free of any nested classes.
 @Mixin(RegistryDataLoader.class)
 @SuppressWarnings("unused") // Mixins are by nature unused
 public class RegistryLoaderMixin {
@@ -164,20 +169,24 @@ public class RegistryLoaderMixin {
                     continue;
                 }
 
-                ResourceKey<DimensionType> dimensionKey = switch (dimPreset.getPresetConfig().getDimensionSettings().getDimensionType()) {
-                    // OTG dimension
-                    case OTG -> ResourceKey.create(Registries.DIMENSION_TYPE, new ResourceLocation(Constants.MOD_ID_SHORT, dimPreset.getPresetRegistryName()));
-                    case OVERWORLD -> BuiltinDimensionTypes.OVERWORLD;
-                    case NETHER -> BuiltinDimensionTypes.NETHER;
-                    case END -> BuiltinDimensionTypes.END;
-                };
+                OTGDimensionType dimensionTypeSetting = dimPreset.getPresetConfig().getDimensionSettings().getDimensionType();
 
-                ResourceKey<NoiseGeneratorSettings> noiseKey = switch (dimPreset.getPresetConfig().getDimensionSettings().getDimensionType()) {
-                    case OVERWORLD -> NoiseGeneratorSettings.OVERWORLD;
-                    case NETHER -> NoiseGeneratorSettings.NETHER;
-                    case END -> NoiseGeneratorSettings.END;
-                    case OTG -> ResourceKey.create(Registries.NOISE_SETTINGS, new ResourceLocation(Constants.MOD_ID_SHORT, dimPreset.getPresetRegistryName()));
-                };
+                ResourceKey<DimensionType> dimensionKey;
+                ResourceKey<NoiseGeneratorSettings> noiseKey;
+                if (dimensionTypeSetting == OTGDimensionType.OVERWORLD) {
+                    dimensionKey = BuiltinDimensionTypes.OVERWORLD;
+                    noiseKey = NoiseGeneratorSettings.OVERWORLD;
+                } else if (dimensionTypeSetting == OTGDimensionType.NETHER) {
+                    dimensionKey = BuiltinDimensionTypes.NETHER;
+                    noiseKey = NoiseGeneratorSettings.NETHER;
+                } else if (dimensionTypeSetting == OTGDimensionType.END) {
+                    dimensionKey = BuiltinDimensionTypes.END;
+                    noiseKey = NoiseGeneratorSettings.END;
+                } else {
+                    // OTG dimension
+                    dimensionKey = ResourceKey.create(Registries.DIMENSION_TYPE, new ResourceLocation(Constants.MOD_ID_SHORT, dimPreset.getPresetRegistryName()));
+                    noiseKey = ResourceKey.create(Registries.NOISE_SETTINGS, new ResourceLocation(Constants.MOD_ID_SHORT, dimPreset.getPresetRegistryName()));
+                }
 
                 Holder.Reference<DimensionType> dimensionReference = dimensionHolders.getOrThrow(dimensionKey);
                 if (!dimensionReference.isBound()) {
@@ -345,23 +354,24 @@ public class RegistryLoaderMixin {
         var map = new HashMap<Preset, ResourceKey<DimensionType>>();
         for (Preset preset : OTG.getEngine().getPresetLoader().getAllPresets()) {
             OTGDimensionType otgDimensionType = preset.getPresetConfig().getDimensionSettings().getDimensionType();
-            ResourceKey<DimensionType> dimensionKey = switch (otgDimensionType) {
-                case OVERWORLD -> BuiltinDimensionTypes.OVERWORLD;
-                case NETHER -> BuiltinDimensionTypes.NETHER;
-                case END -> BuiltinDimensionTypes.END;
-                case OTG -> {
-                    ResourceLocation id = new ResourceLocation(Constants.MOD_ID_SHORT, preset.getPresetRegistryName().toLowerCase(Locale.ROOT));
-                    ResourceKey<DimensionType> dimensionTypeKey = ResourceKey.create(Registries.DIMENSION_TYPE, id);
-                    // create settings for OTG dimension
-                    DimensionType dimensionType = getDimensionType(preset.getPresetConfig().getDimensionSettings());
-                    // register the dimension
-                    WritableRegistry<DimensionType> dimensionTypes = getRegistryOrThrow(list2, Registries.DIMENSION_TYPE);
-                    dimensionTypes.register(dimensionTypeKey, dimensionType, Lifecycle.stable());
-                    OTGLog.info("Registered dimension type: %s", dimensionTypeKey.location());
-                    // return the key for use elsewhere
-                    yield dimensionTypeKey;
-                }
-            };
+            ResourceKey<DimensionType> dimensionKey;
+            if (otgDimensionType == OTGDimensionType.OVERWORLD) {
+                dimensionKey = BuiltinDimensionTypes.OVERWORLD;
+            } else if (otgDimensionType == OTGDimensionType.NETHER) {
+                dimensionKey = BuiltinDimensionTypes.NETHER;
+            } else if (otgDimensionType == OTGDimensionType.END) {
+                dimensionKey = BuiltinDimensionTypes.END;
+            } else {
+                ResourceLocation id = new ResourceLocation(Constants.MOD_ID_SHORT, preset.getPresetRegistryName().toLowerCase(Locale.ROOT));
+                ResourceKey<DimensionType> dimensionTypeKey = ResourceKey.create(Registries.DIMENSION_TYPE, id);
+                // create settings for OTG dimension
+                DimensionType dimensionType = getDimensionType(preset.getPresetConfig().getDimensionSettings());
+                // register the dimension
+                WritableRegistry<DimensionType> dimensionTypes = getRegistryOrThrow(list2, Registries.DIMENSION_TYPE);
+                dimensionTypes.register(dimensionTypeKey, dimensionType, Lifecycle.stable());
+                OTGLog.info("Registered dimension type: %s", dimensionTypeKey.location());
+                dimensionKey = dimensionTypeKey;
+            }
             map.put(preset, dimensionKey);
         }
         return map;

@@ -7,6 +7,12 @@ pluginManagement {
     }
 }
 
+plugins {
+    // Auto-provisions the JDK-24 toolchain that mergeJars (Forgix) runs on,
+    // so the merge works on machines/CI without a local JDK 24 install
+    id 'org.gradle.toolchains.foojay-resolver-convention' version '0.8.0'
+}
+
 rootProject.name = "OpenTerrainGenerator"
 
 include(
