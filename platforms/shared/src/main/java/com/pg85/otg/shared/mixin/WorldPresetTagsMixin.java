@@ -1,7 +1,6 @@
 package com.pg85.otg.shared.mixin;
 
 import com.pg85.otg.constants.Constants;
-import com.pg85.otg.shared.mixin.util.RegistryUtil;
 import com.pg85.otg.util.OTGLog;
 import net.minecraft.core.Holder;
 import net.minecraft.core.HolderSet;
