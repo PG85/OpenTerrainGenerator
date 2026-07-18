@@ -6,7 +6,7 @@ plugins {
 }
 
 architectury {
-    common("fabric")
+    common("fabric", "forge")
 }
 
 val otg: Configuration by configurations.creating
