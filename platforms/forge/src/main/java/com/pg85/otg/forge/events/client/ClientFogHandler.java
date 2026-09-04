@@ -20,9 +20,12 @@ import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.BlockPos.MutableBlockPos;
 import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.Vec3d;
+import net.minecraft.world.World;
 import net.minecraft.world.biome.Biome;
 import net.minecraftforge.client.event.EntityViewRenderEvent;
 import net.minecraftforge.common.ForgeModContainer;
+import net.minecraftforge.event.world.ChunkEvent;
+import net.minecraftforge.event.world.WorldEvent;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import net.minecraftforge.fml.relauncher.Side;
 import net.minecraftforge.fml.relauncher.SideOnly;
@@ -39,13 +42,88 @@ public class ClientFogHandler
 	// Max blend distance in ForgeModContainer.blendRanges
 	private final int MAX_BLEND_DISTANCE = 34;
 	private short[][] biomeCache = new short[(MAX_BLEND_DISTANCE * 2) + 1][(MAX_BLEND_DISTANCE * 2) + 1];
-	private double lastX, lastZ;	
+	private double lastX, lastZ;
+	private ForgeWorld fogBlendWorld;
+	private World fogBlendMinecraftWorld;
+	private BiomeConfig[] fogBlendBiomeConfigs;
+	private int fogBlendBiomeConfigRevision;
+	private long fogBlendX;
+	private long fogBlendZ;
+	private int fogBlendBlockX;
+	private int fogBlendBlockZ;
+	private int fogBlendDistance;
+	private float cachedBiomeFogDistance;
+	private float cachedWeightBiomeFog;
+	private double cachedBiomeFogRed;
+	private double cachedBiomeFogGreen;
+	private double cachedBiomeFogBlue;
+	private double cachedBiomeFogWeight;
+	private BiomeConfig cachedCenterBiomeConfig;
+	private boolean cachedFogFound;
+	private boolean fogBlendCacheValid;
 
 	public ClientFogHandler()
 	{
 		for (short[] row : biomeCache)
 		{
 			Arrays.fill(row, (short) -1);
+		}
+	}
+
+	@SideOnly(Side.CLIENT)
+	@SubscribeEvent
+	public void onWorldLoad(WorldEvent.Load event)
+	{
+		if (event.getWorld().isRemote)
+		{
+			clearFogBlendCache();
+		}
+	}
+
+	@SideOnly(Side.CLIENT)
+	@SubscribeEvent
+	public void onWorldUnload(WorldEvent.Unload event)
+	{
+		if (event.getWorld().isRemote)
+		{
+			clearFogBlendCache();
+		}
+	}
+
+	@SideOnly(Side.CLIENT)
+	@SubscribeEvent
+	public void onChunkLoad(ChunkEvent.Load event)
+	{
+		invalidateFogBlendForChunk(event);
+	}
+
+	@SideOnly(Side.CLIENT)
+	@SubscribeEvent
+	public void onChunkUnload(ChunkEvent.Unload event)
+	{
+		invalidateFogBlendForChunk(event);
+	}
+
+	private void invalidateFogBlendForChunk(ChunkEvent event)
+	{
+		if (!fogBlendCacheValid || event.getWorld() != fogBlendMinecraftWorld || !event.getWorld().isRemote)
+		{
+			return;
+		}
+
+		int chunkMinX = event.getChunk().getPos().x << 4;
+		int chunkMinZ = event.getChunk().getPos().z << 4;
+		int chunkMaxX = chunkMinX + 15;
+		int chunkMaxZ = chunkMinZ + 15;
+
+		if (
+			chunkMaxX >= fogBlendBlockX - fogBlendDistance
+			&& chunkMinX <= fogBlendBlockX + fogBlendDistance
+			&& chunkMaxZ >= fogBlendBlockZ - fogBlendDistance
+			&& chunkMinZ <= fogBlendBlockZ + fogBlendDistance
+		)
+		{
+			clearFogBlendCache();
 		}
 	}
 
@@ -66,23 +144,15 @@ public class ClientFogHandler
 			return;
 		}
 		
-		int blockX = (int) Math.floor(event.getEntity().posX);
-		int blockZ = (int) Math.floor(event.getEntity().posZ);
+		BiomeConfig[] biomeConfigs = OTG.getEngine().getOTGBiomeIds(forgeWorld.getName());
+		int biomeConfigRevision = OTG.getEngine().getBiomeConfigRevision(forgeWorld.getName());
+		Vec3d fogColor = blendFogColors(forgeWorld, (EntityLivingBase) event.getEntity(), event.getRed(), event.getGreen(), event.getBlue(), event.getRenderPartialTicks(), biomeConfigs, biomeConfigRevision);
 
-		boolean hasMoved = event.getEntity().posX != lastX || event.getEntity().posZ != lastZ;
-				
-		BlockPos.MutableBlockPos blockPos = new BlockPos.MutableBlockPos(blockX, 0, blockZ);
-		BiomeConfig biomeConfig = getBiomeConfig(forgeWorld, 0, 0, blockPos, hasMoved);
-		if(biomeConfig != null)
+		if(fogColor != null)
 		{
-			Vec3d fogColor = blendFogColors(forgeWorld, biomeConfig, (EntityLivingBase) event.getEntity(), event.getRed(), event.getGreen(), event.getBlue(), event.getRenderPartialTicks());
-			
-			if(fogColor != null)
-			{
-				event.setRed((float) fogColor.x);
-				event.setGreen((float) fogColor.y);
-				event.setBlue((float) fogColor.z);
-			}
+			event.setRed((float) fogColor.x);
+			event.setGreen((float) fogColor.y);
+			event.setBlue((float) fogColor.z);
 		}
 		
 		lastX = event.getEntity().posX;
@@ -123,6 +193,7 @@ public class ClientFogHandler
 		if(!lastWorldName.equals(forgeWorld.getName()))
 		{
 			lastWorldName = forgeWorld.getName();
+			clearFogBlendCache();
 			for (short[] row : biomeCache)
 			{
 				Arrays.fill(row, (short) -1);
@@ -139,6 +210,7 @@ public class ClientFogHandler
 	{
 		if (!(event.getEntity().getEntityWorld().provider instanceof OTGWorldProvider))
 		{
+			clearFogBlendCache();
 			resetFogDistance(event.getRenderer().mc, event.getFogMode());
 			return;
 		}
@@ -165,61 +237,23 @@ public class ClientFogHandler
 		if (forgeWorld == null)
 		{
 			// Not an OTG world
+			clearFogBlendCache();
 			resetFogDistance(event.getRenderer().mc, event.getFogMode());		
 			return;
 		}
 
 		clearBiomeCacheOnWorldChanged(event.getRenderer().mc, event.getFogMode(), forgeWorld);
-		
-		float biomeFogDistance = 0.0F;
-		float weightBiomeFog = 0.0f;
-		BlockPos.MutableBlockPos blockPos = new BlockPos.MutableBlockPos(0, 0, 0);
-		boolean hasMoved = entity.posX != lastX || entity.posZ != lastZ;
-		float fogDensity;
-		float densityWeight;
-		double differenceX;
-		double differenceZ;
-		BiomeConfig config;
-		boolean bFound = false;
-		
-		for (int x = -blendDistance; x <= blendDistance; ++x)
+		BiomeConfig[] biomeConfigs = OTG.getEngine().getOTGBiomeIds(forgeWorld.getName());
+		int biomeConfigRevision = OTG.getEngine().getBiomeConfigRevision(forgeWorld.getName());
+
+		if (!updateFogBlendCache(forgeWorld, biomeConfigs, biomeConfigRevision, entity, blendDistance, blockX, blockZ))
 		{
-			for (int z = -blendDistance; z <= blendDistance; ++z)
-			{
-				blockPos.setPos(blockX + x, 0, blockZ + z);
-				config = getBiomeConfig(forgeWorld, x + blendDistance, z + blendDistance, blockPos, hasMoved);
-
-				if(config == null)
-				{
-					return;
-				}
-				
-				if(config.fogColor != 0x000000)
-				{		
-					bFound = true;
-					fogDensity = 1.0f - config.fogDensity;
-					densityWeight = 1.0f;
-
-					differenceX = getDifference(entity.posX, blockX, x, blendDistance);
-					differenceZ = getDifference(entity.posZ, blockZ, z, blendDistance);
-
-					if (differenceX >= 0.0f)
-					{
-						fogDensity *= differenceX;
-						densityWeight *= differenceX;
-					}
-
-					if (differenceZ >= 0.0f)
-					{
-						fogDensity *= differenceZ;
-						densityWeight *= differenceZ;
-					}
-
-					biomeFogDistance += fogDensity;
-					weightBiomeFog += densityWeight;
-				}
-			}
+			return;
 		}
+
+		float biomeFogDistance = cachedBiomeFogDistance;
+		float weightBiomeFog = cachedWeightBiomeFog;
+		boolean bFound = cachedFogFound;
 		
 		if(!bFound)
 		{
@@ -273,9 +307,132 @@ public class ClientFogHandler
 		return -1.0f;
 	}
 
+	private void clearFogBlendCache()
+	{
+		fogBlendCacheValid = false;
+		fogBlendWorld = null;
+		fogBlendMinecraftWorld = null;
+		fogBlendBiomeConfigs = null;
+		cachedCenterBiomeConfig = null;
+	}
+
+	private boolean updateFogBlendCache(ForgeWorld forgeWorld, BiomeConfig[] biomeConfigs, int biomeConfigRevision, Entity entity, int blendDistance, int blockX, int blockZ)
+	{
+		long fogX = Double.doubleToLongBits(entity.posX);
+		long fogZ = Double.doubleToLongBits(entity.posZ);
+		World minecraftWorld = entity.getEntityWorld();
+		if (
+			fogBlendCacheValid
+			&& fogBlendWorld == forgeWorld
+			&& fogBlendMinecraftWorld == minecraftWorld
+			&& fogBlendBiomeConfigs == biomeConfigs
+			&& fogBlendBiomeConfigRevision == biomeConfigRevision
+			&& fogBlendX == fogX
+			&& fogBlendZ == fogZ
+			&& fogBlendDistance == blendDistance
+		)
+		{
+			return true;
+		}
+
+		float biomeFogDistance = 0.0F;
+		float weightBiomeFog = 0.0F;
+		double biomeFogRed = 0.0D;
+		double biomeFogGreen = 0.0D;
+		double biomeFogBlue = 0.0D;
+		double biomeFogWeight = 0.0D;
+		BiomeConfig centerBiomeConfig = null;
+		BlockPos.MutableBlockPos blockPos = new BlockPos.MutableBlockPos(0, 0, 0);
+		boolean hasMoved = !fogBlendCacheValid || entity.posX != lastX || entity.posZ != lastZ
+			|| fogBlendWorld != forgeWorld || fogBlendMinecraftWorld != minecraftWorld
+			|| fogBlendBiomeConfigs != biomeConfigs || fogBlendDistance != blendDistance;
+		boolean fogFound = false;
+
+		for (int x = -blendDistance; x <= blendDistance; ++x)
+		{
+			for (int z = -blendDistance; z <= blendDistance; ++z)
+			{
+				blockPos.setPos(blockX + x, 0, blockZ + z);
+				BiomeConfig config = getBiomeConfig(forgeWorld, x + blendDistance, z + blendDistance, blockPos, hasMoved, biomeConfigs);
+
+				if (config == null)
+				{
+					fogBlendCacheValid = false;
+					return false;
+				}
+
+				if (x == 0 && z == 0)
+				{
+					centerBiomeConfig = config;
+				}
+
+				if (config.fogColor != 0x000000)
+				{
+					fogFound = true;
+					float fogDensity = 1.0F - config.fogDensity;
+					float densityWeight = 1.0F;
+					double fogRed = (config.fogColor & 0xFF0000) >> 16;
+					double fogGreen = (config.fogColor & 0x00FF00) >> 8;
+					double fogBlue = config.fogColor & 0x0000FF;
+					float fogWeight = 1.0F;
+					double differenceX = getDifference(entity.posX, blockX, x, blendDistance);
+					double differenceZ = getDifference(entity.posZ, blockZ, z, blendDistance);
+
+					if (differenceX >= 0.0F)
+					{
+						fogDensity *= differenceX;
+						densityWeight *= differenceX;
+						fogRed *= differenceX;
+						fogGreen *= differenceX;
+						fogBlue *= differenceX;
+						fogWeight *= differenceX;
+					}
+
+					if (differenceZ >= 0.0F)
+					{
+						fogDensity *= differenceZ;
+						densityWeight *= differenceZ;
+						fogRed *= differenceZ;
+						fogGreen *= differenceZ;
+						fogBlue *= differenceZ;
+						fogWeight *= differenceZ;
+					}
+
+					biomeFogDistance += fogDensity;
+					weightBiomeFog += densityWeight;
+					biomeFogRed += fogRed;
+					biomeFogGreen += fogGreen;
+					biomeFogBlue += fogBlue;
+					biomeFogWeight += fogWeight;
+				}
+			}
+		}
+
+		fogBlendWorld = forgeWorld;
+		fogBlendMinecraftWorld = minecraftWorld;
+		fogBlendBiomeConfigs = biomeConfigs;
+		fogBlendBiomeConfigRevision = biomeConfigRevision;
+		fogBlendX = fogX;
+		fogBlendZ = fogZ;
+		fogBlendBlockX = blockX;
+		fogBlendBlockZ = blockZ;
+		fogBlendDistance = blendDistance;
+		cachedBiomeFogDistance = biomeFogDistance;
+		cachedWeightBiomeFog = weightBiomeFog;
+		cachedBiomeFogRed = biomeFogRed;
+		cachedBiomeFogGreen = biomeFogGreen;
+		cachedBiomeFogBlue = biomeFogBlue;
+		cachedBiomeFogWeight = biomeFogWeight;
+		cachedCenterBiomeConfig = centerBiomeConfig;
+		cachedFogFound = fogFound;
+		fogBlendCacheValid = true;
+
+		return true;
+	}
+
 	// Blend the fog color
 	@SideOnly(Side.CLIENT)
-	private Vec3d blendFogColors(ForgeWorld forgeWorld, BiomeConfig biomeConfig, EntityLivingBase entity, float red, float green, float blue, double renderPartialTicks)
+	private Vec3d blendFogColors(ForgeWorld forgeWorld, EntityLivingBase entity, float red, float green, float blue, double renderPartialTicks, BiomeConfig[] biomeConfigs, int biomeConfigRevision)
 	{
 		GameSettings settings = Minecraft.getMinecraft().gameSettings;
 		int[] ranges = ForgeModContainer.blendRanges;
@@ -287,70 +444,21 @@ public class ClientFogHandler
 			blendDistance = ranges[settings.renderDistanceChunks];
 		}
 
-		double biomeFogRed = 0.0D;
-		double biomeFogGreen = 0.0D;
-		double biomeFogBlue = 0.0D;
-		double biomeFogWeight = 0.0D;
-
 		int blockX = (int) Math.floor(entity.posX);
 		int blockZ = (int) Math.floor(entity.posZ);
-		BlockPos.MutableBlockPos blockPos = new BlockPos.MutableBlockPos(blockX, 0, blockZ);
-		
-		boolean hasMoved = entity.posX != lastX || entity.posZ != lastZ;
-		BiomeConfig config;
-		double fogRed;
-		double fogGreen;
-		double fogBlue;
-		float fogWeight;
 
-		double differenceX;
-		double differenceZ;	
-		
-		for (int x = -blendDistance; x <= blendDistance; ++x)
+		if (!updateFogBlendCache(forgeWorld, biomeConfigs, biomeConfigRevision, entity, blendDistance, blockX, blockZ))
 		{
-			for (int z = -blendDistance; z <= blendDistance; ++z)
-			{
-				blockPos.setPos(blockX + x, 0, blockZ + z);
-				config = getBiomeConfig(forgeWorld, x + blendDistance, z + blendDistance, blockPos, hasMoved);
-				if(config == null)
-				{
-					return null;
-				}
-				if(config.fogColor != 0x000000)
-				{
-					fogRed = (config.fogColor & 0xFF0000) >> 16;
-					fogGreen = (config.fogColor & 0x00FF00) >> 8;
-					fogBlue = config.fogColor & 0x0000FF;
-					fogWeight = 1.0f;
-
-					differenceX = getDifference(entity.posX, blockX, x, blendDistance);
-					differenceZ = getDifference(entity.posZ, blockZ, z, blendDistance);
-
-					if (differenceX >= 0.0f)
-					{
-						fogRed *= differenceX;
-						fogGreen *= differenceX;
-						fogBlue *= differenceX;
-						fogWeight *= differenceX;
-					}
-
-					if (differenceZ >= 0.0f)
-					{
-						fogRed *= differenceZ;
-						fogGreen *= differenceZ;
-						fogBlue *= differenceZ;
-						fogWeight *= differenceZ;
-					}
-
-					biomeFogRed += fogRed;
-					biomeFogGreen += fogGreen;
-					biomeFogBlue += fogBlue;
-					biomeFogWeight += fogWeight;
-				}
-			}
+			return null;
 		}
 
-		if (biomeFogWeight <= 0.0f || blendDistance <= 0.0f)
+		double biomeFogRed = cachedBiomeFogRed;
+		double biomeFogGreen = cachedBiomeFogGreen;
+		double biomeFogBlue = cachedBiomeFogBlue;
+		double biomeFogWeight = cachedBiomeFogWeight;
+		BiomeConfig biomeConfig = cachedCenterBiomeConfig;
+
+		if (biomeConfig == null || biomeFogWeight <= 0.0f || blendDistance <= 0.0f)
 		{
 			return new Vec3d(red, green, blue);
 		}
@@ -390,21 +498,21 @@ public class ClientFogHandler
 		double weightMixed = (blendDistance * 2) * (blendDistance * 2);
 		double weightDefault = weightMixed - biomeFogWeight;
 
-		fogRed = (biomeFogRed * biomeFogWeight + red * weightDefault) / weightMixed;
-		fogGreen = (biomeFogGreen * biomeFogWeight + green * weightDefault) / weightMixed;
-		fogBlue = (biomeFogBlue * biomeFogWeight + blue * weightDefault) / weightMixed;
+		double fogRed = (biomeFogRed * biomeFogWeight + red * weightDefault) / weightMixed;
+		double fogGreen = (biomeFogGreen * biomeFogWeight + green * weightDefault) / weightMixed;
+		double fogBlue = (biomeFogBlue * biomeFogWeight + blue * weightDefault) / weightMixed;
 
 		return new Vec3d(fogRed, fogGreen, fogBlue);
 	}
 
 	String lastWorldName = "";
 	// Get the biome config from the cache or freshly from the world if needed
-	private BiomeConfig getBiomeConfig(ForgeWorld world, int x, int z, MutableBlockPos blockPos, boolean hasMoved)
+	private BiomeConfig getBiomeConfig(ForgeWorld world, int x, int z, MutableBlockPos blockPos, boolean hasMoved, BiomeConfig[] biomeConfigs)
 	{		
 		short cachedId = biomeCache[x][z];
 		if (cachedId != -1 && !hasMoved)
 		{
-			return OTG.getEngine().getOTGBiomeIds(world.getName())[cachedId];
+			return biomeConfigs[cachedId];
 		} else {
 			Biome biome = world.getBiomeFromChunk(blockPos.getX(), blockPos.getZ());
 			LocalBiome localBiome = biome != null ? world.getBiomeByNameOrNull(biome.getBiomeName()) : null;

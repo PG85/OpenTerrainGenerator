@@ -35,6 +35,7 @@ import java.util.Random;
 public abstract class OTGEngine
 {
 	private HashMap<String, BiomeConfig[]> otgBiomeIdsByWorld = new HashMap<String, BiomeConfig[]>();
+	private HashMap<String, Integer> biomeConfigRevisionByWorld = new HashMap<String, Integer>();
     private BiomeModeManager biomeManagers;
     private List<EventHandler> cancelableEventHandlers = new ArrayList<EventHandler>(5);
     private BiomeResourcesManager biomeResourcesManager;
@@ -309,6 +310,7 @@ public abstract class OTGEngine
     	if(replaceExisting || otgBiomeIdsByWorld.get(worldName)[i] == null)
     	{
     		otgBiomeIdsByWorld.get(worldName)[i] = biomeConfig;
+		incrementBiomeConfigRevision(worldName);
     	} else {
     		throw new RuntimeException("Tried to register OTG biome " + biomeConfig.getName() + " with id " + i + " but the id is in use by biome " + otgBiomeIdsByWorld.get(worldName)[i].getName() + ". OTG 1.12.2 v7 and above use dynamic biome id's for new worlds, this avoids the problem completely.");
     	}
@@ -316,8 +318,20 @@ public abstract class OTGEngine
 
     public BiomeConfig[] getOTGBiomeIds(String worldName)
     {
-    	return otgBiomeIdsByWorld.containsKey(worldName) ? otgBiomeIdsByWorld.get(worldName) : new BiomeConfig[2048]; // Changed to 2048
+		BiomeConfig[] biomeConfigs = otgBiomeIdsByWorld.get(worldName);
+		return biomeConfigs != null ? biomeConfigs : new BiomeConfig[2048]; // Changed to 2048
     }
+
+	public int getBiomeConfigRevision(String worldName)
+	{
+		Integer revision = biomeConfigRevisionByWorld.get(worldName);
+		return revision != null ? revision : 0;
+	}
+
+	private void incrementBiomeConfigRevision(String worldName)
+	{
+		biomeConfigRevisionByWorld.put(worldName, getBiomeConfigRevision(worldName) + 1);
+	}
     
 	public boolean isOTGBiomeIdAvailable(String worldName, int i)
 	{
@@ -327,6 +341,7 @@ public abstract class OTGEngine
 	public void unregisterOTGBiomeId(String worldName, int i)
 	{
 		otgBiomeIdsByWorld.get(worldName)[i] = null;
+		incrementBiomeConfigRevision(worldName);
 	}    
     
     // Materials
