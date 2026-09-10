@@ -170,12 +170,8 @@ public class OreGen extends Resource
 
             // Skip this sphere segment if it's fully outside the given bounds
             if (minX < chunkBeingPopulated.getBlockX()) continue;
-            if (minX > chunkBeingPopulated.getBlockX() + areaBeingPopulatedSize - 1) continue;
-            if (maxX < chunkBeingPopulated.getBlockX()) continue;
             if (maxX > chunkBeingPopulated.getBlockX() + areaBeingPopulatedSize - 1) continue;
             if (minZ < chunkBeingPopulated.getBlockZ()) continue;
-            if (minZ > chunkBeingPopulated.getBlockZ() + areaBeingPopulatedSize - 1) continue;
-            if (maxZ < chunkBeingPopulated.getBlockZ()) continue;
             if (maxZ > chunkBeingPopulated.getBlockZ() + areaBeingPopulatedSize - 1) continue;
             if (minY < PluginStandardValues.WORLD_DEPTH) continue;
             if (minY > PluginStandardValues.WORLD_HEIGHT - 1) continue;
