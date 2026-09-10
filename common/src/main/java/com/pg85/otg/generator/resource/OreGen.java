@@ -82,12 +82,17 @@ public class OreGen extends Resource
 
     protected void createCache()
     {
-   		this.highestBlocksCache = new byte[32][32];
+        if (this.highestBlocksCache == null)
+            this.highestBlocksCache = new byte[32][32];
+        else {
+            for (int i = 0; i < 32; i++)
+                for (int j = 0; j < 32; j++)
+                    this.highestBlocksCache[i][j] = 0;
+        }
     }
     
     protected void clearCache()
     {
-    	this.highestBlocksCache = null;
     }
 
     @Override
