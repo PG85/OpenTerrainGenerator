@@ -11,8 +11,12 @@ import com.pg85.otg.util.helpers.RandomHelper;
 import com.pg85.otg.util.materials.MaterialHelper;
 import com.pg85.otg.util.materials.MaterialSet;
 
+import java.util.ArrayDeque;
+import java.util.Deque;
 import java.util.List;
 import java.util.Random;
+
+import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 
 public class OreGen extends Resource
 {
@@ -20,8 +24,10 @@ public class OreGen extends Resource
     private final int maxSize;
     private final int minAltitude;
     private final MaterialSet sourceBlocks;
-    // use a byte since y is always between 0-255
-    byte[][] highestBlocksCache;
+    // Stack of caches to handle cascading chunk generation (nested spawn() calls on same thread)
+    // Each spawn() pushes its own cache, preventing corruption from nested calls
+    // Using short[][] allows -1 sentinel for "unset" (more efficient than byte + BitSet)
+    private final Deque<short[][]> cacheStack = new ArrayDeque<>();
 
     public OreGen(BiomeConfig biomeConfig, List<String> args) throws InvalidConfigException
     {
@@ -80,194 +86,151 @@ public class OreGen extends Resource
         return "Ore(" + material + "," + maxSize + "," + frequency + "," + rarity + "," + minAltitude + "," + maxAltitude + makeMaterials(sourceBlocks) + ")";
     }
 
+    @Override
     protected void createCache()
     {
-        if (this.highestBlocksCache == null)
-            this.highestBlocksCache = new byte[32][32];
-        else {
-            for (int i = 0; i < 32; i++)
-                for (int j = 0; j < 32; j++)
-                    this.highestBlocksCache[i][j] = 0;
+        short[][] cache = new short[32][32];
+        for (int i = 0; i < 32; i++) {
+            for (int j = 0; j < 32; j++) {
+                cache[i][j] = -1; // = unset
+            }
         }
-    }
-    
-    protected void clearCache()
-    {
+        cacheStack.push(cache);
     }
 
     @Override
-    public void spawn(LocalWorld world, Random rand, boolean villageInChunk, int x, int z, ChunkCoordinate chunkBeingPopulated)
+    protected void clearCache()
     {
-    	// Make sure we stay within population bounds, anything outside won't be spawned (unless it's in an existing chunk).
-    	
+        if (!cacheStack.isEmpty()) {
+            cacheStack.pop();
+        }
+    }
+
+    /**
+     * Packs relative x,y,z coordinates into a single int for deduplication.
+     * Format: [relX:5 bits][Y:8 bits][relZ:5 bits]
+     * Uses chunk-relative coordinates (0-31) for X/Z, absolute Y (0-255)
+     */
+    private static int packCoords(int relX, int y, int relZ) {
+        return (relX << 13) | (y << 5) | relZ;
+    }
+
+    @Override
+    public void spawn(LocalWorld world, Random rand, boolean villageInChunk, int x, int z, ChunkCoordinate chunkBeingPopulated) {
+        //This codes logic is a copy of WorldGenMinable.generate, with some added cfgs and guards
+
         material = material.parseForWorld(world);
         sourceBlocks.parseForWorld(world);
-        
-        if(world.getConfigs().getWorldConfig().disableOreGen)
-        {
-        	if(MaterialHelper.isOre(this.material))
-        	{
-        		return;
-        	}
-        }
-        
+
+        if (world.getConfigs().getWorldConfig().disableOreGen && MaterialHelper.isOre(this.material))
+            return;
+
         int y = RandomHelper.numberInRange(rand, this.minAltitude, this.maxAltitude);
-       
-        float f = rand.nextFloat() * (float)Math.PI;
-        double d0 = (double)((float)(x + 8) + MathHelper.sin(f) * (float)this.maxSize / 8.0F);
-        double d1 = (double)((float)(x + 8) - MathHelper.sin(f) * (float)this.maxSize / 8.0F);
-        double d2 = (double)((float)(z + 8) + MathHelper.cos(f) * (float)this.maxSize / 8.0F);
-        double d3 = (double)((float)(z + 8) - MathHelper.cos(f) * (float)this.maxSize / 8.0F);
-        double d4 = (double)(y + rand.nextInt(3) - 2);
-        double d5 = (double)(y + rand.nextInt(3) - 2);
-        
-        float iFactor;
-        double d6;
-        double d7;
-        double d8;
 
-        double d9;
-        double d10;
-        double d11;
+        float veinAngle = rand.nextFloat() * (float) Math.PI;
 
-        int j;
-        int k;
-        int l;
+        // Define the path endpoints that the ore vein will follow through 3D space
+        // Spheres will be placed along this line to form the complete vein
+        double veinStartX = ((float) (x + 8) + MathHelper.sin(veinAngle) * (float) this.maxSize / 8.0F);
+        double veinEndX = ((float) (x + 8) - MathHelper.sin(veinAngle) * (float) this.maxSize / 8.0F);
+        double veinStartZ = ((float) (z + 8) + MathHelper.cos(veinAngle) * (float) this.maxSize / 8.0F);
+        double veinEndZ = ((float) (z + 8) - MathHelper.cos(veinAngle) * (float) this.maxSize / 8.0F);
+        double veinStartY = (y + rand.nextInt(3) - 2); // Minimal Y variation (0-3 blocks)
+        double veinEndY = (y + rand.nextInt(3) - 2);   // Both use same formula = mostly horizontal veins
 
-        int i1;
-        int j1;
-        int k1; 
-        
-        double d13;
-        double d14;
-        double d15;
-        
-        LocalMaterialData material;
-        int highestSolidBlock;            
-        
-        int areaBeingPoulatedSize = 32;
-               
-        // TODO: This seems to be really poorly optimised.
-        // Redesign this.
-        for (int i = 0; i < this.maxSize; i++)
-        {
-            iFactor = (float) i / (float) this.maxSize;
-            d6 = d0 + (d1 - d0) * (double)iFactor;
-            d7 = d4 + (d5 - d4) * (double)iFactor;
-            d8 = d2 + (d3 - d2) * (double)iFactor;
+        int areaBeingPopulatedSize = 32;
 
-            d9 = rand.nextDouble() * (double)this.maxSize / 16.0D;
-            d10 = (double)(MathHelper.sin((float)Math.PI * iFactor) + 1.0F) * d9 + 1.0D;
-            d11 = (double)(MathHelper.sin((float)Math.PI * iFactor) + 1.0F) * d9 + 1.0D;
-            
-            j = MathHelper.floor(d6 - d10 / 2.0D);
-            k = MathHelper.floor(d7 - d11 / 2.0D);
-            l = MathHelper.floor(d8 - d10 / 2.0D);
+        // Deduplicate block positions across overlapping sphere segments
+        IntOpenHashSet processedBlocks = new IntOpenHashSet(this.maxSize * 4);
 
-            i1 = MathHelper.floor(d6 + d10 / 2.0D);
-            j1 = MathHelper.floor(d7 + d11 / 2.0D);
-            k1 = MathHelper.floor(d8 + d10 / 2.0D);            
-            
-            if(j < chunkBeingPopulated.getBlockX())
-            {
-            	continue;
-            	//j = chunkBeingPopulated.getBlockX();
-            }
-            if(j > chunkBeingPopulated.getBlockX() + areaBeingPoulatedSize - 1)
-            {
-            	continue;
-            	//j = chunkBeingPopulated.getBlockX() + areaBeingPoulatedSize - 1;
-            }
-            if(i1 < chunkBeingPopulated.getBlockX())
-            {
-            	continue;
-            	//i1 = chunkBeingPopulated.getBlockX();
-            }
-            if(i1 > chunkBeingPopulated.getBlockX() + areaBeingPoulatedSize - 1)
-            {
-            	continue;
-            	//i1 = chunkBeingPopulated.getBlockX() + areaBeingPoulatedSize - 1;
-            }
-            
-            if(l < chunkBeingPopulated.getBlockZ())
-            {
-            	continue;
-            	//l = chunkBeingPopulated.getBlockZ();
-            }
-            if(l > chunkBeingPopulated.getBlockZ() + areaBeingPoulatedSize - 1)
-            {
-            	continue;
-            	//l = chunkBeingPopulated.getBlockZ() + areaBeingPoulatedSize - 1;
-            }
-            if(k1 < chunkBeingPopulated.getBlockZ())
-            {
-            	continue;
-            	//k1 = chunkBeingPopulated.getBlockZ();
-            }
-            if(k1 > chunkBeingPopulated.getBlockZ() + areaBeingPoulatedSize - 1)
-            {
-            	continue;
-            	//k1 = chunkBeingPopulated.getBlockZ() + areaBeingPoulatedSize - 1;
-            }
-            
-    		if(k < PluginStandardValues.WORLD_DEPTH)
-    		{
-    			//k = PluginStandardValues.WORLD_DEPTH;
-    			continue;
-    		}
-    		if(k > PluginStandardValues.WORLD_HEIGHT - 1)
-    		{
-    			//k = PluginStandardValues.WORLD_HEIGHT - 1;
-    			continue;
-    		}
-            
-            for (int i3 = j; i3 <= i1; i3++)
-            {
-                d13 = ((double)i3 + 0.5D - d6) / (d10 / 2.0D);
-                if (d13 * d13 < 1.0D)
-                {                	
-                    for (int i5 = l; i5 <= k1; i5++)
-                    {
-                    	if(j1 > 63) // Optimisation, don't look for highestblock if we're already looking below 63, default worlds have base terrain height at 63.
-                    	{
-	                		highestSolidBlock = this.highestBlocksCache[i3 - chunkBeingPopulated.getBlockX()][i5 - chunkBeingPopulated.getBlockZ()] & 0xFF; // byte to int conversion
-	                		if(highestSolidBlock == 0)  // 0 is default / unset.
-	                		{
-	                			highestSolidBlock = world.getHeightMapHeight(i3, i5, chunkBeingPopulated);
-	                			// TODO: This causes getHeightMapHeight to be called every time on a 0 height column, 
-	                			// can't use -1 tho since we're using byte arrays. At least we're aborting the column 
-	                			// immediately, since OreGen shouldn't be used to spawn things in empty columns. If
-	                			// that's what you want, make a cloud generator or something, optimised for spawning in 
-	                			// air/void.
-	                			if(highestSolidBlock == -1)
-	                			{
-	                				highestSolidBlock = (byte)0; // Reset
-	                				break;
-	                			}
-	                			this.highestBlocksCache[i3 - chunkBeingPopulated.getBlockX()][i5 - chunkBeingPopulated.getBlockZ()] = (byte)highestSolidBlock;
-	                		}
-                    		if(j1 > highestSolidBlock)
-                    		{
-                    			j1 = highestSolidBlock;
-                    		}
-                    	}
-	                    for (int i4 = k; i4 <= j1; i4++)
-	                    {
-	                        d14 = ((double)i4 + 0.5D - d7) / (d11 / 2.0D);
-	                        if (d13 * d13 + d14 * d14 < 1.0D)
-	                        {
-                                d15 = ((double)i5 + 0.5D - d8) / (d10 / 2.0D);
-                                if((d13 * d13 + d14 * d14 + d15 * d15 < 1.0D))
-                                {
-                            		material = world.getMaterial(i3, i4, i5, chunkBeingPopulated);
-	                                if(this.sourceBlocks.contains(material))
-	                                {
-	                                    world.setBlock(i3, i4, i5, this.material, null, chunkBeingPopulated, true);
-	                                }
-                                }
-                            }
-                    	}
-                	}
+        // Generate ore vein as a series of spherical segments connected along a path
+        // Each segment forms part of a continuous vein with varying thickness (sine wave bulge)
+        for (int segmentIndex = 0; segmentIndex < this.maxSize; segmentIndex++) {
+            // Calculate interpolation factor (0.0 at start point, 1.0 at end point)
+            float interpolFactor = (float) segmentIndex / (float) this.maxSize;
+
+            // Interpolate current position along the vein path
+            double currentX = veinStartX + (veinEndX - veinStartX) * interpolFactor;
+            double currentY = veinStartY + (veinEndY - veinStartY) * interpolFactor;
+            double currentZ = veinStartZ + (veinEndZ - veinStartZ) * interpolFactor;
+
+            // Calculate sphere size at this point (creates bulge in middle of the entire path via sine)
+            double sizeVariation = rand.nextDouble() * this.maxSize / 16.0D;
+            double diameter = (MathHelper.sin((float) Math.PI * interpolFactor) + 1.0F) * sizeVariation + 1.0D;
+            double radius = diameter / 2.0D;
+            double radiusSqr = radius * radius;
+
+            // Calculate bounding box for this sphere segment
+            int minX = MathHelper.floor(currentX - radius);
+            int maxX = MathHelper.floor(currentX + radius);
+            int minY = MathHelper.floor(currentY - radius);
+            int maxY = MathHelper.floor(currentY + radius);
+            int minZ = MathHelper.floor(currentZ - radius);
+            int maxZ = MathHelper.floor(currentZ + radius);
+
+            // Skip this sphere segment if it's fully outside the given bounds
+            if (minX < chunkBeingPopulated.getBlockX()) continue;
+            if (minX > chunkBeingPopulated.getBlockX() + areaBeingPopulatedSize - 1) continue;
+            if (maxX < chunkBeingPopulated.getBlockX()) continue;
+            if (maxX > chunkBeingPopulated.getBlockX() + areaBeingPopulatedSize - 1) continue;
+            if (minZ < chunkBeingPopulated.getBlockZ()) continue;
+            if (minZ > chunkBeingPopulated.getBlockZ() + areaBeingPopulatedSize - 1) continue;
+            if (maxZ < chunkBeingPopulated.getBlockZ()) continue;
+            if (maxZ > chunkBeingPopulated.getBlockZ() + areaBeingPopulatedSize - 1) continue;
+            if (minY < PluginStandardValues.WORLD_DEPTH) continue;
+            if (minY > PluginStandardValues.WORLD_HEIGHT - 1) continue;
+
+            // Iterate through all blocks in the sphere's bounding box, order x -> z -> y
+            for (int blockX = minX; blockX <= maxX; blockX++) {
+                // Calculate X distance from sphere center
+                double dx = (double) blockX + 0.5D - currentX;
+                double dxSqr = dx * dx;
+                if (dxSqr >= radiusSqr) continue;  // Skip if X coordinate is outside sphere
+                int relX = blockX - chunkBeingPopulated.getBlockX();
+
+                for (int blockZ = minZ; blockZ <= maxZ; blockZ++) {
+                    int clampedMaxY = maxY;
+
+                    // Check terrain height to avoid generating ore in air (only used above vanilla sea level, somewhat incorrect)
+                    if (clampedMaxY > 63) {
+                        short[][] currentCache = cacheStack.peek();
+                        if (currentCache == null) continue; // should never happen
+
+                        int cacheX = blockX - chunkBeingPopulated.getBlockX();
+                        int cacheZ = blockZ - chunkBeingPopulated.getBlockZ();
+
+                        // check cached height
+                        int highestSolidBlock = currentCache[cacheX][cacheZ];
+                        if (highestSolidBlock == -1) { // Cache miss
+                            highestSolidBlock = world.getHeightMapHeight(blockX, blockZ, chunkBeingPopulated);
+                            if (highestSolidBlock == -1)  // Empty column, no solid blocks
+                                continue;  // Skip this entire Z column
+                            currentCache[cacheX][cacheZ] = (short) highestSolidBlock;
+                        }
+
+                        // Limit Y iteration to terrain surface (don't generate ore above ground)
+                        clampedMaxY = Math.min(clampedMaxY, highestSolidBlock);
+                    }
+
+                    double dz = (double) blockZ + 0.5D - currentZ;
+                    double dxzSqr = dxSqr + dz * dz;
+                    if (dxzSqr >= radiusSqr) continue;  // Skip if XZ coordinates are outside sphere
+                    int relZ = blockZ - chunkBeingPopulated.getBlockZ();
+
+                    for (int blockY = minY; blockY <= clampedMaxY; blockY++) {
+                        double dy = (double) blockY + 0.5D - currentY;
+
+                        // Is point outside sphere? (3D pythagoras)
+                        if (dxzSqr + dy * dy >= radiusSqr) continue;
+
+                        // Don't process blocks multiple times
+                        if (!processedBlocks.add(packCoords(relX, blockY, relZ))) continue;
+
+                        LocalMaterialData material = world.getMaterial(blockX, blockY, blockZ, chunkBeingPopulated);
+                        if (this.sourceBlocks.contains(material)) {
+                            world.setBlock(blockX, blockY, blockZ, this.material, null, chunkBeingPopulated, true);
+                        }
+                    }
                 }
             }
         }
