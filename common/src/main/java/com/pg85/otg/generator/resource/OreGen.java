@@ -203,19 +203,19 @@ public class OreGen extends Resource
             // Iterate through all blocks in the sphere's bounding box
             for (int blockX = minX; blockX <= maxX; blockX++) {
                 for (int blockZ = minZ; blockZ <= maxZ; blockZ++) {
-                    for (int y2 = Math.min(maxY, context.getHeight(world, blockX, blockZ, chunkBeingPopulated)); y2 >= minY; y2--) {
+                    for (int blockY = Math.min(maxY, context.getHeight(world, blockX, blockZ, chunkBeingPopulated)); blockY >= minY; blockY--) {
                         float dx = blockX + 0.5F - currentX;
                         float dz = blockZ + 0.5F - currentZ;
-                        float dy = y2 + 0.5F - currentY;
+                        float dy = blockY + 0.5F - currentY;
                         // Is point outside sphere? (3D pythagoras)
                         if (dx * dx + dy * dy + dz * dz > radius * radius) continue;
 
                         // Don't process blocks multiple times
-                        if (!context.visit(blockX, y2, blockZ, chunkBeingPopulated)) continue;
+                        if (!context.visit(blockX, blockY, blockZ, chunkBeingPopulated)) continue;
 
                         // Actually replace the source block with the ore block
-                        if (this.sourceBlocks.contains(world.getMaterial(blockX, y2, blockZ, chunkBeingPopulated))) {
-                            world.setBlock(blockX, y2, blockZ, this.material, null, chunkBeingPopulated, true);
+                        if (this.sourceBlocks.contains(world.getMaterial(blockX, blockY, blockZ, chunkBeingPopulated))) {
+                            world.setBlock(blockX, blockY, blockZ, this.material, null, chunkBeingPopulated, true);
                         }
                     }
                 }
