@@ -172,7 +172,7 @@ public class OreGen extends Resource
 
         // Generate ore vein as a series of spherical segments connected along a path
         // Each segment forms part of a continuous vein with varying thickness (sine wave bulge)
-        for (int segmentIndex = 0; segmentIndex < this.maxSize; segmentIndex++) {
+        for (int segmentIndex = 0; segmentIndex <= this.maxSize; segmentIndex++) {
             // Calculate interpolation factor (0.0 at start point, 1.0 at end point)
             float interpolFactor = (float) segmentIndex / (float) this.maxSize;
 

@@ -84,7 +84,7 @@ class Vein
         float maxY = y - 1 + rand.nextInt(3);
         float minY = y - 1 + rand.nextInt(3);
 
-        for(int i = 0; i < maxSize; i++)
+        for(int i = 0; i <= maxSize; i++)
         {
             float iFactor = (float) i / (float) maxSize;
             float x1 = maxX + (minX - maxX) * iFactor;
