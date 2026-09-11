@@ -2,6 +2,7 @@ package com.pg85.otg.forge.commands;
 
 import com.pg85.otg.common.LocalWorld;
 import com.pg85.otg.forge.biomes.ForgeBiome;
+import com.pg85.otg.forge.dimensions.OTGDimensionManager;
 import com.pg85.otg.forge.dimensions.OTGTeleporter;
 import com.pg85.otg.forge.world.ForgeWorld;
 import net.minecraft.command.ICommandSender;
@@ -15,6 +16,7 @@ import net.minecraftforge.fml.common.FMLCommonHandler;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Random;
 
 public class TPCommand extends BaseCommand
@@ -54,17 +56,6 @@ public class TPCommand extends BaseCommand
             player = (EntityPlayerMP) sender.getCommandSenderEntity();
         }
 
-        BlockPos pos = player.getPosition();
-        int playerX = pos.getX();
-        int playerZ = pos.getZ();
-        LocalWorld world = this.getWorld(sender, "");
-
-        if (world == null)
-        {
-            sender.sendMessage(new TextComponentTranslation(ERROR_COLOR + "Could not find world for sender"));
-            return true;
-        }
-
         StringBuilder biomeOrDimensionName = new StringBuilder();
         for (String arg : args) {
             if (arg.equalsIgnoreCase("-p"))
@@ -80,28 +71,53 @@ public class TPCommand extends BaseCommand
         sender.sendMessage(
                 new TextComponentTranslation(MESSAGE_COLOR + "Searching for destination biome or dimension \"" + VALUE_COLOR + biomeOrDimensionName + MESSAGE_COLOR + "\"."));
 
-        // Check dimension names
-        for (int i = -1; i < Long.SIZE << 4; i++)
+        int targetDimensionId = Integer.MIN_VALUE;
+        int biomeId = -1;
+        try
         {
-            if (DimensionManager.isDimensionRegistered(i))
+            biomeId = Integer.parseInt(biomeOrDimensionName.toString().replace(" ", ""));
+            if (DimensionManager.isDimensionRegistered(biomeId))
             {
-                DimensionType dimensionType = DimensionManager.getProviderType(i);
-                if (dimensionType.getName().toLowerCase().trim().equals(biomeOrDimensionName.toString().toLowerCase()))
+                targetDimensionId = biomeId;
+            }
+        }
+        catch (NumberFormatException ignored) { }
+
+        if (targetDimensionId == Integer.MIN_VALUE)
+        {
+            String targetName = normalizeDimensionName(biomeOrDimensionName.toString());
+            for (int dimensionId : DimensionManager.getStaticDimensionIDs())
+            {
+                DimensionType dimensionType = DimensionManager.getProviderType(dimensionId);
+                if (normalizeDimensionName(dimensionType.getName()).equals(targetName))
                 {
-                    sender.sendMessage(new TextComponentTranslation(MESSAGE_COLOR + "Dimension found, teleport commenced"));
-                    OTGTeleporter.changeDimension(i, player, false, true);
-                    return true;
+                    targetDimensionId = dimensionId;
+                    break;
                 }
             }
         }
 
-        int biomeId = -1;
-        try {
-            biomeId = Integer.parseInt(biomeOrDimensionName.toString().replace(" ", ""));
-        } catch (NumberFormatException ex) {
-            // Do nothing
+        if (targetDimensionId != Integer.MIN_VALUE)
+        {
+            if (!OTGDimensionManager.IsOTGDimension(targetDimensionId) && DimensionManager.getWorld(targetDimensionId) == null)
+            {
+                DimensionManager.initDimension(targetDimensionId);
+            }
+            sender.sendMessage(new TextComponentTranslation(MESSAGE_COLOR + "Dimension found, teleport commenced"));
+            OTGTeleporter.changeDimension(targetDimensionId, player, false, true);
+            return true;
         }
 
+        LocalWorld world = this.getWorld(player, "");
+        if (world == null)
+        {
+            sender.sendMessage(new TextComponentTranslation(ERROR_COLOR + "Could not find world for sender"));
+            return true;
+        }
+
+        BlockPos pos = player.getPosition();
+        int playerX = pos.getX();
+        int playerZ = pos.getZ();
         Biome targetMCBiome = null;
         if (biomeId == -1)
         {
@@ -134,5 +150,11 @@ public class TPCommand extends BaseCommand
         sender.sendMessage(
                 new TextComponentTranslation(ERROR_COLOR + "Could not find biome \"" + biomeOrDimensionName + "\"."));
         return true;
+    }
+
+    private static String normalizeDimensionName(String name)
+    {
+        String normalized = name.toLowerCase(Locale.ROOT).replace(" ", "").replace("_", "").replace("-", "");
+        return normalized.startsWith("the") ? normalized.substring(3) : normalized;
     }
 }
