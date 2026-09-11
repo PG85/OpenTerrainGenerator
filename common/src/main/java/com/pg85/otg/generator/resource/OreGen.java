@@ -62,7 +62,7 @@ public class OreGen extends Resource
     private final int minAltitude;
     private final MaterialSet sourceBlocks;
 
-    //Cache keeps already initialized objects to be used by the stack, which exists for nested generation calls to not interfere with each other
+    // Cache keeps already initialized objects to be used by the stack, which exists for nested generation calls to not interfere with each other
     private static final Queue<GenerationContext> contextCache = new ArrayBlockingQueue<>(2);
     private static final Stack<GenerationContext> contextStack = new ObjectArrayList<>();
 
@@ -152,7 +152,8 @@ public class OreGen extends Resource
     }
 
     @Override
-    public void spawn(LocalWorld world, Random rand, boolean villageInChunk, int x, int z, ChunkCoordinate chunkBeingPopulated) {
+    public void spawn(LocalWorld world, Random rand, boolean villageInChunk, int x, int z, ChunkCoordinate chunkBeingPopulated)
+    {
         // This codes logic is a copy of WorldGenMinable.generate, with some added cfgs and guards
         GenerationContext context = contextStack.top();
         int y = RandomHelper.numberInRange(rand, this.minAltitude, this.maxAltitude);
@@ -172,7 +173,8 @@ public class OreGen extends Resource
 
         // Generate ore vein as a series of spherical segments connected along a path
         // Each segment forms part of a continuous vein with varying thickness (sine wave bulge)
-        for (int segmentIndex = 0; segmentIndex <= this.maxSize; segmentIndex++) {
+        for(int segmentIndex = 0; segmentIndex <= this.maxSize; segmentIndex++)
+        {
             // Calculate interpolation factor (0.0 at start point, 1.0 at end point)
             float interpolFactor = (float) segmentIndex / (float) this.maxSize;
 
@@ -193,28 +195,32 @@ public class OreGen extends Resource
             int maxZ = MathHelper.ceil(currentZ + radius - 0.5F) - 1;
 
             // Skip this sphere segment if it's not fully inside the given bounds
-            if (minX < chunkBeingPopulated.getBlockX()) continue;
-            if (maxX >= chunkBeingPopulated.getBlockX() + 32) continue;
-            if (minZ < chunkBeingPopulated.getBlockZ()) continue;
-            if (maxZ >= chunkBeingPopulated.getBlockZ() + 32) continue;
-            if (minY < PluginStandardValues.WORLD_DEPTH) continue;
-            if (maxY >= PluginStandardValues.WORLD_HEIGHT) continue;
+            if(minX < chunkBeingPopulated.getBlockX()) continue;
+            if(maxX >= chunkBeingPopulated.getBlockX() + 32) continue;
+            if(minZ < chunkBeingPopulated.getBlockZ()) continue;
+            if(maxZ >= chunkBeingPopulated.getBlockZ() + 32) continue;
+            if(minY < PluginStandardValues.WORLD_DEPTH) continue;
+            if(maxY >= PluginStandardValues.WORLD_HEIGHT) continue;
 
             // Iterate through all blocks in the sphere's bounding box
-            for (int blockX = minX; blockX <= maxX; blockX++) {
-                for (int blockZ = minZ; blockZ <= maxZ; blockZ++) {
-                    for (int blockY = Math.min(maxY, context.getHeight(world, blockX, blockZ, chunkBeingPopulated)); blockY >= minY; blockY--) {
+            for(int blockX = minX; blockX <= maxX; blockX++)
+            {
+                for(int blockZ = minZ; blockZ <= maxZ; blockZ++)
+                {
+                    for(int blockY = Math.min(maxY, context.getHeight(world, blockX, blockZ, chunkBeingPopulated)); blockY >= minY; blockY--)
+                    {
                         float dx = blockX + 0.5F - currentX;
                         float dz = blockZ + 0.5F - currentZ;
                         float dy = blockY + 0.5F - currentY;
                         // Is point outside sphere? (3D pythagoras)
-                        if (dx * dx + dy * dy + dz * dz >= radius * radius) continue;
+                        if(dx * dx + dy * dy + dz * dz >= radius * radius) continue;
 
                         // Don't process blocks multiple times
-                        if (!context.visit(blockX, blockY, blockZ, chunkBeingPopulated)) continue;
+                        if(!context.visit(blockX, blockY, blockZ, chunkBeingPopulated)) continue;
 
                         // Actually replace the source block with the ore block
-                        if (this.sourceBlocks.contains(world.getMaterial(blockX, blockY, blockZ, chunkBeingPopulated))) {
+                        if(this.sourceBlocks.contains(world.getMaterial(blockX, blockY, blockZ, chunkBeingPopulated)))
+                        {
                             world.setBlock(blockX, blockY, blockZ, this.material, null, chunkBeingPopulated, true);
                         }
                     }
