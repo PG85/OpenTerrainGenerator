@@ -34,7 +34,7 @@ public class OreGen extends Resource
             int height = this.heightmap[i];
             if(height < 0)
             {
-                this.heightmap[i] = (short) (height = world.getHeightMapHeight(x, z, chunkCoords));
+                this.heightmap[i] = height = world.getHeightMapHeight(x, z, chunkCoords);
             }
             return height;
         }
