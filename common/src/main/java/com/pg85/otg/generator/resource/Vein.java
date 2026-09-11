@@ -93,13 +93,13 @@ class Vein
 
             float r = ((MathHelper.sin((float) Math.PI * iFactor) + 1.0F) * rand.nextFloat() * maxSize / 16.0F + 1.0F) * 0.5F;
 
-            int minX1 = MathHelper.ceil(x1 - r - 0.5F);
-            int minY1 = MathHelper.ceil(y1 - r - 0.5F);
-            int minZ1 = MathHelper.ceil(z1 - r - 0.5F);
+            int minX1 = MathHelper.floor(x1 - r + 0.5F);
+            int minY1 = MathHelper.floor(y1 - r + 0.5F);
+            int minZ1 = MathHelper.floor(z1 - r + 0.5F);
 
-            int maxX1 = MathHelper.floor(x1 + r - 0.5F);
-            int maxY1 = MathHelper.floor(y1 + r - 0.5F);
-            int maxZ1 = MathHelper.floor(z1 + r - 0.5F);
+            int maxX1 = MathHelper.ceil(x1 + r - 0.5F) - 1;
+            int maxY1 = MathHelper.ceil(y1 + r - 0.5F) - 1;
+            int maxZ1 = MathHelper.ceil(z1 + r - 0.5F) - 1;
 
             for(int x2 = minX1; x2 <= maxX1; x2++)
             {
@@ -110,7 +110,7 @@ class Vein
                         float dx = x2 + 0.5F - x1;
                         float dy = y2 + 0.5F - y1;
                         float dz = z2 + 0.5F - z1;
-                        if(dx * dx + dy * dy + dz * dz > r * r)
+                        if(dx * dx + dy * dy + dz * dz >= r * r)
                         {
                             continue;
                         }

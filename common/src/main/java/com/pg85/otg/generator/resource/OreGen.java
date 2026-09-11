@@ -185,12 +185,12 @@ public class OreGen extends Resource
             float radius = ((MathHelper.sin((float) Math.PI * interpolFactor) + 1.0F) * rand.nextFloat() * this.maxSize / 16.0F + 1.0F) * 0.5F;
 
             // Calculate bounding box for this sphere segment
-            int minX = MathHelper.ceil(currentX - radius - 0.5F);
-            int minY = MathHelper.ceil(currentY - radius - 0.5F);
-            int minZ = MathHelper.ceil(currentZ - radius - 0.5F);
-            int maxX = MathHelper.floor(currentX + radius - 0.5F);
-            int maxY = MathHelper.floor(currentY + radius - 0.5F);
-            int maxZ = MathHelper.floor(currentZ + radius - 0.5F);
+            int minX = MathHelper.floor(currentX - radius + 0.5F);
+            int minY = MathHelper.floor(currentY - radius + 0.5F);
+            int minZ = MathHelper.floor(currentZ - radius + 0.5F);
+            int maxX = MathHelper.ceil(currentX + radius - 0.5F) - 1;
+            int maxY = MathHelper.ceil(currentY + radius - 0.5F) - 1;
+            int maxZ = MathHelper.ceil(currentZ + radius - 0.5F) - 1;
 
             // Skip this sphere segment if it's not fully inside the given bounds
             if (minX < chunkBeingPopulated.getBlockX()) continue;
@@ -208,7 +208,7 @@ public class OreGen extends Resource
                         float dz = blockZ + 0.5F - currentZ;
                         float dy = blockY + 0.5F - currentY;
                         // Is point outside sphere? (3D pythagoras)
-                        if (dx * dx + dy * dy + dz * dz > radius * radius) continue;
+                        if (dx * dx + dy * dy + dz * dz >= radius * radius) continue;
 
                         // Don't process blocks multiple times
                         if (!context.visit(blockX, blockY, blockZ, chunkBeingPopulated)) continue;
