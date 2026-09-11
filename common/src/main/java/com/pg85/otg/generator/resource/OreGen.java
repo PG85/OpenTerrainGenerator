@@ -214,7 +214,7 @@ public class OreGen extends Resource
                         if (!context.visit(blockX, y2, blockZ, chunkBeingPopulated)) continue;
 
                         // Actually replace the source block with the ore block
-                        if (!this.sourceBlocks.contains(world.getMaterial(blockX, y2, blockZ, chunkBeingPopulated))) {
+                        if (this.sourceBlocks.contains(world.getMaterial(blockX, y2, blockZ, chunkBeingPopulated))) {
                             world.setBlock(blockX, y2, blockZ, this.material, null, chunkBeingPopulated, true);
                         }
                     }
