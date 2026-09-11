@@ -163,10 +163,10 @@ public class OreGen extends Resource
 
         // Define the line endpoints that the ore vein will follow through 3D space
         // Spheres of varying size (biggest in center) will be placed along this line to form the complete vein
-        float veinStartX = x + 8 + veinAngleSin;
-        float veinEndX   = x + 8 - veinAngleSin;
-        float veinStartZ = z + 8 + veinAngleCos;
-        float veinEndZ   = z + 8 - veinAngleCos;
+        float veinStartX = x + veinAngleSin;
+        float veinEndX   = x - veinAngleSin;
+        float veinStartZ = z + veinAngleCos;
+        float veinEndZ   = z - veinAngleCos;
         float veinStartY = y - 2 + rand.nextInt(3);
         float veinEndY   = y - 2 + rand.nextInt(3);
 
