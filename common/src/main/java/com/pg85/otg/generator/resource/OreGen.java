@@ -186,10 +186,10 @@ public class OreGen extends Resource
 
             // Calculate bounding box for this sphere segment
             int minX = MathHelper.ceil(currentX - radius - 0.5F);
-            int maxX = MathHelper.floor(currentX + radius - 0.5F);
             int minY = MathHelper.ceil(currentY - radius - 0.5F);
-            int maxY = MathHelper.floor(currentY + radius - 0.5F);
             int minZ = MathHelper.ceil(currentZ - radius - 0.5F);
+            int maxX = MathHelper.floor(currentX + radius - 0.5F);
+            int maxY = MathHelper.floor(currentY + radius - 0.5F);
             int maxZ = MathHelper.floor(currentZ + radius - 0.5F);
 
             // Skip this sphere segment if it's not fully inside the given bounds
