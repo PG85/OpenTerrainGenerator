@@ -76,13 +76,13 @@ class Vein
         float sinf = MathHelper.sin(f) * maxSize / 8.0F;
         float cosf = MathHelper.cos(f) * maxSize / 8.0F;
 
-        float maxX = x + sinf;
-        float minX = x - sinf;
-        float maxZ = z + cosf;
-        float minZ = z - cosf;
+        float maxX = x + 0.5F + sinf;
+        float minX = x + 0.5F - sinf;
+        float maxZ = z + 0.5F + cosf;
+        float minZ = z + 0.5F - cosf;
 
-        float maxY = y - 2 + rand.nextInt(3);
-        float minY = y - 2 + rand.nextInt(3);
+        float maxY = y - 1 + rand.nextInt(3);
+        float minY = y - 1 + rand.nextInt(3);
 
         for(int i = 0; i < maxSize; i++)
         {
