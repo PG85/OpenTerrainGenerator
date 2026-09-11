@@ -63,8 +63,8 @@ public class OreGen extends Resource
     private final MaterialSet sourceBlocks;
 
     //Cache keeps already initialized objects to be used by the stack, which exists for nested generation calls to not interfere with each other
-    private final Queue<GenerationContext> contextCache = new ArrayBlockingQueue<>(2);
-    private final Stack<GenerationContext> contextStack = new ObjectArrayList<>();
+    private static final Queue<GenerationContext> contextCache = new ArrayBlockingQueue<>(2);
+    private static final Stack<GenerationContext> contextStack = new ObjectArrayList<>();
 
     public OreGen(BiomeConfig biomeConfig, List<String> args) throws InvalidConfigException
     {
@@ -126,16 +126,16 @@ public class OreGen extends Resource
     @Override
     protected void createCache()
     {
-        GenerationContext context = Optional.ofNullable(this.contextCache.poll()).orElseGet(GenerationContext::new);
-        this.contextStack.push(context);
+        GenerationContext context = Optional.ofNullable(contextCache.poll()).orElseGet(GenerationContext::new);
+        contextStack.push(context);
     }
 
     @Override
     protected void clearCache()
     {
-        GenerationContext context = this.contextStack.pop();
+        GenerationContext context = contextStack.pop();
         context.reset();
-        this.contextCache.offer(context);
+        contextCache.offer(context);
     }
 
     @Override
@@ -154,7 +154,7 @@ public class OreGen extends Resource
     @Override
     public void spawn(LocalWorld world, Random rand, boolean villageInChunk, int x, int z, ChunkCoordinate chunkBeingPopulated) {
         // This codes logic is a copy of WorldGenMinable.generate, with some added cfgs and guards
-        GenerationContext context = this.contextStack.top();
+        GenerationContext context = contextStack.top();
         int y = RandomHelper.numberInRange(rand, this.minAltitude, this.maxAltitude);
 
         float veinAngle = rand.nextFloat() * (float) Math.PI;
