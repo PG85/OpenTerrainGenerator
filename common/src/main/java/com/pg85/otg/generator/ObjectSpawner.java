@@ -70,6 +70,8 @@ public class ObjectSpawner
         lock.lock();
         try
         {
+            this.saveRequired = true;
+
             if(!this.processing)
             {
                 this.processing = true;

@@ -77,7 +77,7 @@ public class CustomStructureFileManager
 
     private static void readAll(LocalWorld world, String path, IOBiConsumer<Path, DataInputStream> reader)
     {
-        DataUtil.readCompressed(worldDataDir(world), StructureDataFileExtension, StructureDataBackupFileExtension, reader);
+        DataUtil.readCompressed(worldDataDir(world).resolve(path), StructureDataFileExtension, StructureDataBackupFileExtension, reader);
     }
 
     private static String toFileName(ChunkCoordinate chunkCoordinate)
@@ -90,8 +90,8 @@ public class CustomStructureFileManager
         try
         {
             String s = file.getFileName().toString();
-            s = StringUtils.removeEnd(s, StructureDataFileExtension);
             s = StringUtils.removeEnd(s, StructureDataBackupFileExtension);
+            s = StringUtils.removeEnd(s, StructureDataFileExtension);
             int i = s.indexOf('_');
             if(i < 0)
             {
@@ -223,8 +223,12 @@ public class CustomStructureFileManager
         Map<CustomStructure, Entry<CustomStructure, List<ChunkCoordinate>>> output = new HashMap<>();
 
         readAll(world, WorldStandardValues.StructureDataFolderName, (p, in) -> {
-            ChunkCoordinate key = parseChunkCoordinate(p);
-            if(key == null)
+            ChunkCoordinate key;
+            try
+            {
+                key = parseChunkCoordinate(p);
+            }
+            catch(IllegalArgumentException e)
             {
                 return;
             }

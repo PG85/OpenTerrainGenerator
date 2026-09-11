@@ -6,6 +6,7 @@ import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
@@ -18,6 +19,7 @@ import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.apache.commons.lang3.StringUtils;
 
@@ -48,28 +50,56 @@ public class DataUtil
 
     public static void writeCompressed(Path file, Path backup, IOConsumer<DataOutputStream> writer)
     {
+        Path temp = null;
         try
         {
             ByteArrayOutputStream buffer = new ByteArrayOutputStream();
-            writer.accept(new DataOutputStream(buffer));
+            try(DataOutputStream out = new DataOutputStream(buffer))
+            {
+                writer.accept(out);
+            }
 
-            if(!Files.exists(file))
-            {
-                Files.createDirectories(file.getParent());
-            }
-            else
-            {
-                Files.move(file, backup, StandardCopyOption.REPLACE_EXISTING);
-            }
-            try(OutputStream out = CompressionUtils.newDeflaterOutputStream(file))
+            Path directory = file.toAbsolutePath().getParent();
+            Files.createDirectories(directory);
+
+            temp = Files.createTempFile(directory, file.getFileName().toString() + ".", ".tmp");
+            try(OutputStream out = CompressionUtils.newDeflaterOutputStream(temp))
             {
                 out.write(buffer.toByteArray());
+            }
+
+            if(Files.isRegularFile(file))
+            {
+                Files.copy(file, backup, StandardCopyOption.REPLACE_EXISTING);
+            }
+
+            try
+            {
+                Files.move(temp, file, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
+            }
+            catch(AtomicMoveNotSupportedException e)
+            {
+                Files.move(temp, file, StandardCopyOption.REPLACE_EXISTING);
             }
         }
         catch(IOException e)
         {
             e.printStackTrace();
             OTG.log(LogMarker.INFO, "OTG encountered an error writing " + file.toAbsolutePath() + ", skipping.");
+        }
+        finally
+        {
+            if(temp != null)
+            {
+                try
+                {
+                    Files.deleteIfExists(temp);
+                }
+                catch(IOException e)
+                {
+                    e.printStackTrace();
+                }
+            }
         }
     }
 
@@ -80,14 +110,18 @@ public class DataUtil
 
     public static void readCompressed(Path directory, String extension, String backupExtension, IOBiConsumer<Path, DataInputStream> reader)
     {
-        try
+        if(!Files.isDirectory(directory))
         {
-            Files.find(directory, 0, (p, a) -> a.isRegularFile())
-                    .map(directory::relativize)
+            return;
+        }
+
+        try(Stream<Path> files = Files.list(directory))
+        {
+            files.filter(Files::isRegularFile)
+                    .map(Path::getFileName)
                     .map(Path::toString)
                     .filter(p -> p.endsWith(extension) || p.endsWith(backupExtension))
-                    .map(p -> StringUtils.removeEnd(p, extension))
-                    .map(p -> StringUtils.removeEnd(p, backupExtension))
+                    .map(p -> p.endsWith(backupExtension) ? StringUtils.removeEnd(p, backupExtension) : StringUtils.removeEnd(p, extension))
                     .distinct()
                     .forEach(p -> readCompressed(directory.resolve(p + extension), directory.resolve(p + backupExtension), reader));
         }
@@ -99,26 +133,39 @@ public class DataUtil
 
     public static void readCompressed(Path file, Path backup, IOBiConsumer<Path, DataInputStream> reader)
     {
-        try(DataInputStream in = new DataInputStream(new BufferedInputStream(CompressionUtils.newInflaterInputStream(file))))
+        if(!Files.isRegularFile(file) && !Files.isRegularFile(backup))
         {
-            reader.accept(file, in);
             return;
         }
-        catch(IOException e)
-        {
-            OTG.log(LogMarker.INFO, "Failed to load " + file.toAbsolutePath() + ", trying to load backup.");
-            e.printStackTrace();
 
+        if(Files.isRegularFile(file))
+        {
+            try(DataInputStream in = new DataInputStream(new BufferedInputStream(CompressionUtils.newInflaterInputStream(file))))
+            {
+                reader.accept(file, in);
+                return;
+            }
+            catch(IOException e)
+            {
+                OTG.log(LogMarker.INFO, "Failed to load " + file.toAbsolutePath() + ", trying to load backup.");
+                e.printStackTrace();
+            }
+        }
+
+        if(Files.isRegularFile(backup))
+        {
             try(DataInputStream in = new DataInputStream(new BufferedInputStream(CompressionUtils.newInflaterInputStream(backup))))
             {
                 reader.accept(backup, in);
+                return;
             }
-            catch(IOException e1)
+            catch(IOException e)
             {
-                OTG.log(LogMarker.INFO, "OTG encountered an error loading " + file.toAbsolutePath() + " and could not load a backup, skipping.");
-                e1.printStackTrace();
+                e.printStackTrace();
             }
         }
+
+        OTG.log(LogMarker.INFO, "OTG encountered an error loading " + file.toAbsolutePath() + " and could not load a backup, skipping.");
     }
 
     public static <T> IOBiConsumer<DataOutputStream, T> mappingWriter(DataOutputStream out, UnaryOperator<T> mappingFunction, IOBiConsumer<DataOutputStream, T> mappedWriter)
