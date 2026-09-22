@@ -6,8 +6,10 @@ import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.io.UncheckedIOException;
 import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.Collection;
@@ -110,62 +112,76 @@ public class DataUtil
 
     public static void readCompressed(Path directory, String extension, String backupExtension, IOBiConsumer<Path, DataInputStream> reader)
     {
-        if(!Files.isDirectory(directory))
-        {
-            return;
-        }
-
         try(Stream<Path> files = Files.list(directory))
         {
-            files.filter(Files::isRegularFile)
-                    .map(Path::getFileName)
+            files.map(Path::getFileName)
                     .map(Path::toString)
                     .filter(p -> p.endsWith(extension) || p.endsWith(backupExtension))
                     .map(p -> p.endsWith(backupExtension) ? StringUtils.removeEnd(p, backupExtension) : StringUtils.removeEnd(p, extension))
                     .distinct()
                     .forEach(p -> readCompressed(directory.resolve(p + extension), directory.resolve(p + backupExtension), reader));
         }
-        catch(IOException e)
+        catch(NoSuchFileException e)
         {
+            return;
+        }
+        catch(IOException | UncheckedIOException e)
+        {
+            OTG.log(LogMarker.INFO, "OTG encountered an error listing " + directory.toAbsolutePath() + ", skipping.");
             e.printStackTrace();
         }
     }
 
     public static void readCompressed(Path file, Path backup, IOBiConsumer<Path, DataInputStream> reader)
     {
-        if(!Files.isRegularFile(file) && !Files.isRegularFile(backup))
+        boolean primaryMissing = false;
+        try
         {
-            return;
-        }
-
-        if(Files.isRegularFile(file))
-        {
-            try(DataInputStream in = new DataInputStream(new BufferedInputStream(CompressionUtils.newInflaterInputStream(file))))
+            if(readCompressedFile(file, reader))
             {
-                reader.accept(file, in);
                 return;
             }
-            catch(IOException e)
-            {
-                OTG.log(LogMarker.INFO, "Failed to load " + file.toAbsolutePath() + ", trying to load backup.");
-                e.printStackTrace();
-            }
+            primaryMissing = true;
+        }
+        catch(IOException e)
+        {
+            OTG.log(LogMarker.INFO, "Failed to load " + file.toAbsolutePath() + ", trying to load backup.");
+            e.printStackTrace();
         }
 
-        if(Files.isRegularFile(backup))
+        try
         {
-            try(DataInputStream in = new DataInputStream(new BufferedInputStream(CompressionUtils.newInflaterInputStream(backup))))
+            if(readCompressedFile(backup, reader) || primaryMissing)
             {
-                reader.accept(backup, in);
                 return;
             }
-            catch(IOException e)
-            {
-                e.printStackTrace();
-            }
+        }
+        catch(IOException e)
+        {
+            OTG.log(LogMarker.INFO, "Failed to load backup " + backup.toAbsolutePath() + ".");
+            e.printStackTrace();
         }
 
         OTG.log(LogMarker.INFO, "OTG encountered an error loading " + file.toAbsolutePath() + " and could not load a backup, skipping.");
+    }
+
+    private static boolean readCompressedFile(Path file, IOBiConsumer<Path, DataInputStream> reader) throws IOException
+    {
+        DataInputStream stream;
+        try
+        {
+            stream = new DataInputStream(new BufferedInputStream(CompressionUtils.newInflaterInputStream(file)));
+        }
+        catch(NoSuchFileException e)
+        {
+            return false;
+        }
+
+        try(DataInputStream in = stream)
+        {
+            reader.accept(file, in);
+        }
+        return true;
     }
 
     public static <T> IOBiConsumer<DataOutputStream, T> mappingWriter(DataOutputStream out, UnaryOperator<T> mappingFunction, IOBiConsumer<DataOutputStream, T> mappedWriter)
