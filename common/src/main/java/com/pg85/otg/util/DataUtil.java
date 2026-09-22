@@ -112,9 +112,9 @@ public class DataUtil
 
     public static void readCompressed(Path directory, String extension, String backupExtension, IOBiConsumer<Path, DataInputStream> reader)
     {
-        try(Stream<Path> files = Files.list(directory))
+        try(Stream<Path> files = Files.find(directory, 1, (p, a) -> a.isRegularFile()))
         {
-            files.map(Path::getFileName)
+            files.map(directory::relativize)
                     .map(Path::toString)
                     .filter(p -> p.endsWith(extension) || p.endsWith(backupExtension))
                     .map(p -> p.endsWith(backupExtension) ? StringUtils.removeEnd(p, backupExtension) : StringUtils.removeEnd(p, extension))
