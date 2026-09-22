@@ -1,11 +1,10 @@
 package com.pg85.otg.util;
 
 import java.io.BufferedInputStream;
-import java.io.ByteArrayOutputStream;
+import java.io.BufferedOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
-import java.io.OutputStream;
 import java.io.UncheckedIOException;
 import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
@@ -55,19 +54,13 @@ public class DataUtil
         Path temp = null;
         try
         {
-            ByteArrayOutputStream buffer = new ByteArrayOutputStream();
-            try(DataOutputStream out = new DataOutputStream(buffer))
-            {
-                writer.accept(out);
-            }
-
             Path directory = file.toAbsolutePath().getParent();
             Files.createDirectories(directory);
 
             temp = Files.createTempFile(directory, file.getFileName().toString() + ".", ".tmp");
-            try(OutputStream out = CompressionUtils.newDeflaterOutputStream(temp))
+            try(DataOutputStream out = new DataOutputStream(new BufferedOutputStream(CompressionUtils.newDeflaterOutputStream(temp))))
             {
-                out.write(buffer.toByteArray());
+                writer.accept(out);
             }
 
             if(Files.isRegularFile(file))
