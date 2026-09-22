@@ -134,54 +134,34 @@ public class DataUtil
 
     public static void readCompressed(Path file, Path backup, IOBiConsumer<Path, DataInputStream> reader)
     {
-        boolean primaryMissing = false;
         try
         {
-            if(readCompressedFile(file, reader))
-            {
-                return;
-            }
-            primaryMissing = true;
+            readCompressedFile(file, reader);
         }
         catch(IOException e)
         {
             OTG.log(LogMarker.INFO, "Failed to load " + file.toAbsolutePath() + ", trying to load backup.");
             e.printStackTrace();
-        }
 
-        try
-        {
-            if(readCompressedFile(backup, reader) || primaryMissing)
+            try
             {
-                return;
+                readCompressedFile(backup, reader);
+            }
+            catch(IOException e1)
+            {
+                OTG.log(LogMarker.INFO, "Failed to load backup " + backup.toAbsolutePath() + ".");
+                e1.printStackTrace();
+                OTG.log(LogMarker.INFO, "OTG encountered an error loading " + file.toAbsolutePath() + " and could not load a backup, skipping.");
             }
         }
-        catch(IOException e)
-        {
-            OTG.log(LogMarker.INFO, "Failed to load backup " + backup.toAbsolutePath() + ".");
-            e.printStackTrace();
-        }
-
-        OTG.log(LogMarker.INFO, "OTG encountered an error loading " + file.toAbsolutePath() + " and could not load a backup, skipping.");
     }
 
-    private static boolean readCompressedFile(Path file, IOBiConsumer<Path, DataInputStream> reader) throws IOException
+    private static void readCompressedFile(Path file, IOBiConsumer<Path, DataInputStream> reader) throws IOException
     {
-        DataInputStream stream;
-        try
-        {
-            stream = new DataInputStream(new BufferedInputStream(CompressionUtils.newInflaterInputStream(file)));
-        }
-        catch(NoSuchFileException e)
-        {
-            return false;
-        }
-
-        try(DataInputStream in = stream)
+        try(DataInputStream in = new DataInputStream(new BufferedInputStream(CompressionUtils.newInflaterInputStream(file))))
         {
             reader.accept(file, in);
         }
-        return true;
     }
 
     public static <T> IOBiConsumer<DataOutputStream, T> mappingWriter(DataOutputStream out, UnaryOperator<T> mappingFunction, IOBiConsumer<DataOutputStream, T> mappedWriter)
