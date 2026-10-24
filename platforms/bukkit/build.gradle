@@ -5,6 +5,7 @@ plugins {
 base.archivesName = "${mod_name}-bukkit"
 
 repositories {
+    mavenLocal() // spigot, installed via BuildTools
     maven { url = 'https://hub.spigotmc.org/nexus/content/repositories/snapshots/' } // bukkit
     maven { url = "https://rutgerkok.nl/repo/" } // spigot
 }
