@@ -131,7 +131,8 @@ public final class BiomeGroupManager
             }
             if(map.totalWeight() < map.size() * 100)
             {
-                map.add(null, map.size() * 100);
+                // Pad up to size * 100 total, add() takes a weight, not a cumulative key
+                map.add(null, map.size() * 100 - map.totalWeight());
             }
             this.cachedGroupDepthMaps.put(depth, map);
         }
