@@ -44,7 +44,7 @@ public class LayerBiome extends Layer
                     if(!weightedBiomes.isEmpty())
                     {
                         LocalBiome biome = weightedBiomes.getRandom(this::nextInt);
-                        if (biome != null) {
+                        if (biome != null && biome.getBiomeConfig().biomeSize == this.depth) {
                             // Clear any stale BiomeBits/IceBit/BiomeBitsAreSetBit (e.g. from a
                             // previous depth having set this cell to defaultOceanId) before
                             // writing the newly picked biome's id, otherwise the old bits get
