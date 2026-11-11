@@ -166,7 +166,7 @@ public class CustomStructureFileManager
             if(!v.requiresSave())
                 return;
 
-            saveStructuresRegionFile(world, k, v.getStructures().collect(Collectors.groupingBy(e -> e.getValue().start != null ? e.getValue().start.bo3Name : "NULL", Collectors.groupingBy(Map.Entry::getValue, Collectors.mapping(Map.Entry::getKey, Collectors.toList())))));
+            saveStructuresRegionFile(world, k, v.getStructures(k).collect(Collectors.groupingBy(e -> e.getValue().start != null ? e.getValue().start.bo3Name : "NULL", Collectors.groupingBy(Map.Entry::getValue, Collectors.mapping(Map.Entry::getKey, Collectors.toList())))));
 
             v.markSaved();
             regionsSaved.getAndIncrement();
@@ -291,7 +291,22 @@ public class CustomStructureFileManager
                     }
                 }
 
-                List<ChunkCoordinate> chunkCoords = DataUtil.readCollection(new ArrayList<>(), in, ChunkCoordinate::read);
+                List<ChunkCoordinate> chunkCoords = DataUtil.readCollection(new ArrayList<>(), in2, ChunkCoordinate::read);
+
+                // Repair data written by versions that saved region-internal chunk coordinates
+                // instead of world chunk coordinates. Every chunk saved in a region file belongs
+                // to that region, so any coordinate outside of it must be region-internal.
+                for(int i = 0; i < chunkCoords.size(); i++)
+                {
+                    ChunkCoordinate chunkCoord = chunkCoords.get(i);
+                    if(!regionCoord.regionContainsChunk(chunkCoord))
+                    {
+                        chunkCoords.set(i, ChunkCoordinate.fromChunkCoords(
+                            regionCoord.getChunkX() * CustomStructureCache.REGION_SIZE + chunkCoord.getRegionInternalX(),
+                            regionCoord.getChunkZ() * CustomStructureCache.REGION_SIZE + chunkCoord.getRegionInternalZ()
+                        ));
+                    }
+                }
 
                 Map<ChunkCoordinate, Stack<BO4CustomStructureCoordinate>> objectsToSpawn = DataUtil.readOptional(new HashMap<>(), in2, DataUtil.mapReader(HashMap::new, ChunkCoordinate::read, DataUtil.collectionReader(Stack::new, BO4CustomStructureCoordinate.reader(world))));
 

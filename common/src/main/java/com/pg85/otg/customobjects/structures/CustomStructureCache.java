@@ -205,7 +205,7 @@ public class CustomStructureCache
     {
     	if(world.isBo4Enabled())
     	{
-    		return this.worldInfoChunks.containsKey(chunkCoord);
+    		return worldInfoChunksContainsKey(chunkCoord);
     	}
     	return false;
     }
