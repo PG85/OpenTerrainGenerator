@@ -190,7 +190,7 @@ public class ChunkCoordinate
 
     public boolean regionContains(CustomObjectConfigFunction<?> function)
     {
-        return regionContainsChunk(ChunkCoordinate.fromChunkCoords(function.x(), function.z()));
+        return regionContainsChunk(ChunkCoordinate.fromBlockCoords(function.x(), function.z()));
     }
 
 	public int getRegionInternalX()

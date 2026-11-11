@@ -40,8 +40,11 @@ public class StructureDataRegion
         this.requiresSave = this.requiresSave || requiresSave;
     }
 
-    public Stream<Map.Entry<ChunkCoordinate, CustomStructure>> getStructures()
+    // Returns world chunk coordinates (not region-internal coordinates) for each structure in this region.
+    public Stream<Map.Entry<ChunkCoordinate, CustomStructure>> getStructures(ChunkCoordinate regionCoord)
     {
-        return IntStream.range(0, REGION_SIZE * REGION_SIZE).filter(i -> structures[i] != null).mapToObj(i -> new SimpleEntry<>(ChunkCoordinate.fromChunkCoords(i / REGION_SIZE, i % REGION_SIZE), structures[i]));
+        int baseX = regionCoord.getChunkX() * REGION_SIZE;
+        int baseZ = regionCoord.getChunkZ() * REGION_SIZE;
+        return IntStream.range(0, REGION_SIZE * REGION_SIZE).filter(i -> structures[i] != null).mapToObj(i -> new SimpleEntry<>(ChunkCoordinate.fromChunkCoords(baseX + i / REGION_SIZE, baseZ + i % REGION_SIZE), structures[i]));
     }
 }
